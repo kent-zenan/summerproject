@@ -1,0 +1,20 @@
+package uk.ac.nottingham.ningboport.planner;
+
+import java.util.Calendar;
+import java.util.Vector;
+
+public class CommodityEvent implements Comparable<CommodityEvent>{
+	Vector<Commodity> eventCommodities;
+	Calendar eventTime;
+	
+	CommodityEvent(Vector<Commodity> v, Calendar c) {
+		eventCommodities = v;
+		eventTime = c;
+	}
+	
+	public int compareTo(CommodityEvent event) {
+		return eventTime.compareTo(event.eventTime);
+	}
+	
+	
+}

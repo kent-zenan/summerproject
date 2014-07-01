@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">NBPScheduling</string>
+    <string name="menu_settings">Settings</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="id">ID</string>
+	<string name="from">From</string>
+	<string name="to">To</string>
+	<string name="ETA">ETA</string>
+	<string name="login">User login</string>
+	<string name="un">User name</string>
+	<string name="pw">Password</string>
+	<string name="vid">Vehicle ID</string>
+	<string name="loginBtn">login</string>
+</resources>

@@ -1,0 +1,297 @@
+package uk.ac.nottingham.ningboport.planner;
+
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.Vector;
+
+import uk.ac.nottingham.ningboport.planner.Task.sortingMethod;
+import uk.ac.nottingham.ningboport.planner.Task.taskStatus;
+import uk.ac.nottingham.ningboport.planner.algorithms.Insertion;
+import uk.ac.nottingham.ningboport.planner.algorithms.VNS;
+
+public class EventBasedSimulator {
+	private Vector<CommodityEvent> commodityEvents;
+	private Calendar currentTime;
+	private Network nw;
+	
+	//TODO: if it is simulated. we no longer need to specify number of shifts
+	EventBasedSimulator(Vector<CommodityEvent> events, Network nw) {
+		commodityEvents = events;
+		System.out.printf("There are %d events parsed from %d commodities\n",
+				events.size(), nw.commodities.size());
+		this.nw = nw;
+	}
+	
+	public void run() {
+		Collections.sort(commodityEvents);
+		currentTime = commodityEvents.firstElement().eventTime;
+		final int LONGEST_BOND = 5; 
+		
+		//Combine temporally close events.
+		//TODO: combine based on how busy the shift is? like total number of tasks.
+		//if emergency task appear, then do it immediately
+		for (int i = 0; i < commodityEvents.size(); i++) {
+			CommodityEvent eventI = commodityEvents.get(i);
+			
+			// Time window of bond = [firstEventTime, firstEventTime + 5 hours]
+			Calendar firstEventTime = eventI.eventTime;
+			Calendar maxbond = (Calendar) firstEventTime.clone();
+			maxbond.add(Calendar.HOUR, LONGEST_BOND);
+			
+			Calendar bond = (Calendar) eventI.eventTime.clone();
+			bond.add(Calendar.HOUR, 1);
+			for (int j = i + 1; j < commodityEvents.size(); j++) {
+				CommodityEvent eventJ = commodityEvents.get(j);
+				if (eventJ.eventTime.before(bond) && eventJ.eventTime.before(maxbond)) {
+					bond = (Calendar) eventJ.eventTime.clone();
+					bond.add(Calendar.HOUR, 1);
+					eventI.commodities.addAll(eventJ.commodities);
+					eventI.eventTime = eventJ.eventTime;
+					commodityEvents.remove(j--);
+				}
+			}
+		}
+		
+		// Start simulation.
+		int commodityEventSize = commodityEvents.size();
+		System.out.printf("After combining, there are %d events\n", commodityEventSize);
+		for (int i = 0; i < commodityEventSize; i++) {
+			//reveal commodities in event
+			CommodityEvent event = commodityEvents.get(i);
+			
+			//set up emergency bond, tasks with deadline within 4 hours.
+			Calendar emergencyBond = (Calendar) event.eventTime.clone();
+			emergencyBond.add(Calendar.HOUR, 4);
+			Vector<Commodity> urgentCommodities = new Vector<Commodity>();
+			int totalTaskQuantity = 0;
+			
+			int commoditySize = event.commodities.size();
+			for (int j = 0; j < commoditySize; j++) {
+				Commodity commodityJ = event.commodities.get(j);
+				commodityJ.revealed = true;
+				
+				if (commodityJ.deadline.before(emergencyBond))
+					urgentCommodities.add(commodityJ);
+	
+				totalTaskQuantity += nw.getCommodityTasks(commodityJ).size();
+			}
+			
+			System.out.printf("%d of %d, %d commodities (%d tasks)\tadded at %s\n", i + 1, commodityEventSize, commoditySize, totalTaskQuantity, event.eventTime.getTime());
+			currentTime = event.eventTime;
+			int startingShift = freezeTasks(currentTime);
+			removeUnfinishedTask();
+			if (startingShift < 0) {
+				continue;
+			}
+			setRestTime(startingShift, currentTime);
+			
+			/*
+			 *  Dynamic Strategy Here:
+			 *  when emergent tasks exists, put them as first task.
+			 */
+			urgentReschedule(urgentCommodities, currentTime, startingShift);
+			
+			// run the algorithm
+			//TODO get the last shift number
+			Insertion ins = new Insertion(nw, false, false);
+			ins.run(startingShift, nw.getNumberOfShifts() - 1);
+			//VNS ts = new VNS(nw);
+			//ts.run(startingShift, nw.getNumberOfShifts() - 1);
+			//System.out.println(nw.outputRoutes());
+			
+			//System.out.println("\n\n");
+			//TODO: create a method to find out what mandatory commodity is left unfinished
+			// only revealed commodity counts.
+		}
+	}
+	
+	/*
+	 * freeze tasks according to currentTime.
+	 * returns which shift currentTime belongs to.
+	 * This method sets the actual finish time for routes (before current ctime's shift) as well.
+	 * 
+	 */
+	private int freezeTasks(Calendar ctime) {
+		Route errorRoute = nw.checkAllRoutes();
+		if (errorRoute != null) {
+			RoutingPlanner.errormsg("Error setting finished ta: not all routes currect!");
+			nw.check(errorRoute);
+			System.exit(0);
+		}
+		
+		int numberOfShifts = nw.getNumberOfShifts();
+		
+		int ctimeShiftIndex = -1;
+		for (int i = 0; i < numberOfShifts && ctimeShiftIndex == -1; i++) {
+			if (ctime.after(nw.shiftStartTimes[i]) && ctime.before(nw.shiftEndTimes[i]))
+				ctimeShiftIndex = i;
+			
+			int nroutes = nw.routesOfShifts.get(i).size();
+			for (int j = 0; j < nroutes; j++) {
+				Route routeJ = nw.routesOfShifts.get(i).get(j);
+				Route rjBak =  routeJ.clone(); // testing
+				Vector<Task> taskSet = routeJ.taskSet;
+				Calendar previousTaskActualFinishTime = null;
+				if (routeJ.actualStartTime != null) {
+					previousTaskActualFinishTime = routeJ.actualStartTime;
+				} else if (routeJ.startTime != null) {
+					previousTaskActualFinishTime = routeJ.startTime;
+				} else {
+					previousTaskActualFinishTime = nw.shiftStartTimes[i];
+				}
+				int tsSize = taskSet.size();
+				for (int k = 0; k < tsSize; k++) {
+					Task t = taskSet.get(k);
+					if (t.actualFinishT != null)
+						continue;
+
+					if (ctime.after(t.startT)) {
+						t.actualStartT = (Calendar) t.startT.clone();
+						if (ctime.after(t.finishT)) {
+							t.actualFinishT = (Calendar) t.finishT.clone();
+							t.currentStatus = taskStatus.FINISHED;
+						} else {
+							t.currentStatus = taskStatus.RUNNING;
+						}
+					} else if (previousTaskActualFinishTime != null 
+							&& ctime.before(t.startT) 
+							&& ctime.after(previousTaskActualFinishTime)){
+					// if the ctime is before t.startT but after previous actualFinishT
+					// change the current status if the task is running
+					// but has not loaded container yet.
+						t.currentStatus = taskStatus.RUNNING;
+					
+					}
+					
+					previousTaskActualFinishTime = t.actualFinishT;
+				}// task set loop
+				
+				if (ctimeShiftIndex == -1 || i < ctimeShiftIndex) //all shift before ctimeShiftIndex
+					if (routeJ.actualEndTime == null)
+						routeJ.actualEndTime = routeJ.endTime;
+
+				if (routeJ.actualStartTime == null) {
+					routeJ.actualStartTime = routeJ.startTime;
+				}
+				
+				int checkInt = nw.check(routeJ);
+				if (checkInt < 1) {
+					System.out.printf("Freeze Task: Wrong route\nOriginal:%s\nModified%s\n",
+							rjBak.toString(), 
+							routeJ.toString());
+					nw.check(rjBak);
+					System.out.println("Error Id = " + checkInt + " " + routeJ.checkErrorIndex);
+					System.exit(0);
+				}
+			} // for each route
+			
+		}
+		
+		return ctimeShiftIndex;
+	}
+
+	/*
+	 * sets the restTimeInMinute for tasks in event's shift
+	 * all routes will have actual start time updated
+	 * if the task is close to shift end, we will assume that 
+	 * the drive will go back
+	 */
+	private void setRestTime(int shiftIndex, Calendar ctime) {
+		if (ctime.compareTo(nw.shiftStartTimes[shiftIndex]) <= 0 || ctime.after(nw.shiftEndTimes[shiftIndex])) {
+			System.out.println("bad shift index or ctime in set rest time");
+			return;
+		}
+		
+		Vector<Route> shift = nw.routesOfShifts.get(shiftIndex);
+		int shiftSize = shift.size();
+		for (int i = 0; i < shiftSize; i++) {
+			Route routeI = shift.get(i);
+			Vector<Task> taskSetI = routeI.taskSet;
+			int routeISize = taskSetI.size();
+			if (routeISize == 0) { // empty task, increase actual start time
+				routeI.actualStartTime = (Calendar) ctime.clone();
+				
+			} else { // set the rest time of last task
+				Task lastTask = taskSetI.lastElement();
+				if ((lastTask.actualStartT == null && lastTask.currentStatus != taskStatus.RUNNING)
+						|| (lastTask.actualStartT != null && lastTask.actualStartT.after(ctime))) {
+					System.out.println("Set Rest Time: actualStartT is wrong, why?");
+				} 
+				
+				if (lastTask.actualFinishT != null) {
+					Calendar returnTimeAfterRest = (Calendar) ctime.clone();
+					returnTimeAfterRest.add(Calendar.MINUTE, (int) nw.travelingTimes[lastTask.cmdt.dest.index][nw.depot.index]);
+					if (returnTimeAfterRest.before(nw.shiftEndTimes[i])) {
+						lastTask.setRestTimeInMinute(ctime);
+					}
+				}
+			}
+			
+			if (nw.check(routeI) < 1) {
+				System.out.println("Route error after setting rest time\n" + routeI);
+			}
+		}
+	}
+	
+	private void removeUnfinishedTask() {
+		for (int i = 0; i < nw.getNumberOfShifts(); i++) {
+			Vector<Route> shiftI = nw.routesOfShifts.get(i);
+			int rsize = shiftI.size();
+			for (int j = 0; j < rsize; j++) {
+				if (shiftI.get(j).actualEndTime != null) {
+					continue;
+				}
+				Vector<Task> taskSetJ = shiftI.elementAt(j).taskSet;
+				for (int k = 0; k < taskSetJ.size(); k++) {
+					Task t = taskSetJ.get(k);
+					if (!t.freezed()) {
+						nw.taskSet.add(taskSetJ.remove(k--));
+					}
+				}
+			}
+		}
+	} // end of removeUnfinishedTask
+	
+	private void urgentReschedule(Vector<Commodity> urgentCommodity, Calendar eventTime, int shiftIndex) {
+		if (urgentCommodity.size() == 0) return;
+		
+		Vector<Route> currentShift = nw.routesOfShifts.get(shiftIndex);
+		Vector<Task> urgentTasks = new Vector<Task>();
+		for (int i = 0; i < urgentCommodity.size(); i++) {
+			System.out.println(urgentCommodity.get(i));
+			urgentTasks.addAll(nw.getCommodityTasks(urgentCommodity.get(i)));
+		}
+		System.out.printf("There are %d emergent commodity with %d tasks\n", urgentCommodity.size(), urgentTasks.size());
+		
+		Task.sortBy = sortingMethod.DEADLINE;
+		Collections.sort(urgentTasks); //TODO: check the ordering
+		/*
+		 * for each task, find the best insertion point.
+		 */
+		int urgentTaskQuantity = urgentTasks.size();
+		int shiftSize = currentShift.size();
+		for (int i = 0; i < urgentTaskQuantity; i++) { // task
+			for (int j = 0; j < shiftSize; j++) { // shift
+				Route routeJ = currentShift.get(j);
+				if (routeJ.taskSet.size() == 0) {
+					//insert immediately
+				} else {
+					Task lastTask = routeJ.taskSet.lastElement();
+					if (lastTask.actualStartT == null) {
+						if (lastTask.currentStatus == taskStatus.RUNNING) {
+							// give up current task and do the urgent task
+						} else {
+							// error message
+						}
+					} else if (lastTask.actualStartT != null) {
+						if (lastTask.actualFinishT == null) {
+							
+						} else {
+							
+						}
+					}
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,38 @@
+package uk.ac.nottingham.ningboport.planner;
+
+import java.util.Calendar;
+import java.util.Vector;
+
+public class CommodityEvent implements Comparable<CommodityEvent>{
+	public Vector<Commodity> commodities;
+	public Calendar eventTime;
+	
+	CommodityEvent() {
+		commodities = new Vector<Commodity>();
+	}
+	
+	public int compareTo(CommodityEvent event) {
+		return eventTime.compareTo(event.eventTime);
+	}
+	
+	public static Vector<CommodityEvent> generateEvents(Network nw) {
+		Vector<CommodityEvent> events = new Vector<CommodityEvent>();
+		
+		@SuppressWarnings("unchecked")
+		Vector<Commodity> commodities = (Vector<Commodity>) nw.commodities.clone();
+		for (int i = 0; i < commodities.size(); i++) {
+			Commodity c = commodities.remove(i);
+			CommodityEvent event = new CommodityEvent();
+			event.commodities.add(c);
+			event.eventTime = (Calendar) c.availTime.clone();
+			
+			for (int j = i; j < commodities.size(); j++) {
+				if (commodities.get(j).availTime.compareTo(event.eventTime) == 0) {
+					event.commodities.add(commodities.remove(j--));
+				}
+			}
+			events.add(event);
+		}
+		return events;
+	}
+}

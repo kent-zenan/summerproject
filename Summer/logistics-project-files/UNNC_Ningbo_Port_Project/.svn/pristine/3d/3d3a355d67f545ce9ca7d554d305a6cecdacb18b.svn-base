@@ -1,0 +1,206 @@
+package uk.ac.nottingham.ningboport.planner;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.Calendar;
+import java.util.GregorianCalendar;
+import uk.ac.nottingham.ningboport.planner.NetworkReader;
+import uk.ac.nottingham.ningboport.planner.Network;
+import uk.ac.nottingham.ningboport.planner.algorithms.Insertion;
+import uk.ac.nottingham.ningboport.planner.algorithms.VNS;
+import uk.ac.nottingham.ningboport.planner.statistics.StatisticsAnalyzer;
+
+public class RoutingPlanner {
+
+	private static String output = "";
+	private static String networkFileName = null, commodityFileName = null, solutionFileName = null,
+			startDate = null, numOfPeriods = null;
+	
+	private static boolean readCommodityFromDB = false;
+	private static String dbUsername = null, dbPassword = null;
+
+	private static int postfix = 0;
+	/**
+	 * @param args
+	 * Network_file commodity_file starting_time duration_of_one_periods number_of_periods
+	 * 
+	 * example: "-n network -sol realLifeData -s 20121201080000 -pl 12 -np 60"
+	 */
+	public static void main(String[] args) {
+		for (int i = 0; i < args.length; i++) {
+			if (args[i].charAt(0) == '-') {
+				String argType = args[i].substring(1);
+				if (argType.equals("n")) {
+					networkFileName = args[++i];
+					
+				} else if (argType.equals("c")) {
+					commodityFileName = args[++i];
+					
+				} else if (argType.equals("s")) {
+					startDate = args[++i];
+					
+				} else if (argType.equals("np")) {
+					numOfPeriods = args[++i];
+					
+				} else if (argType.equals("sol")) {
+					solutionFileName = args[++i];
+					
+				} else if (argType.equals("maximumRunTime")) {
+					VNS.maximumRunTime = Integer.parseInt(args[++i]);
+					
+				} else if (argType.equals("maximumShakeTime")) {
+					VNS.maximumShakeTime = Integer.parseInt(args[++i]);
+					
+				} else if (argType.equals("shakeBase")) {
+					VNS.shakeBase = Integer.parseInt(args[++i]);
+					
+				} else if (argType.equals("tabuEnabled")) {
+					VNS.tabuEnabled = Boolean.parseBoolean(args[++i]);
+					
+				} else if (argType.equals("firstImprove")) {
+					VNS.firstImprove = Boolean.parseBoolean(args[++i]);
+					
+				} else if (argType.equals("db")) {
+					readCommodityFromDB = true;
+					
+				} else if (argType.equals("dbUsername")) {
+					dbUsername = args[++i];
+					
+				} else if (argType.equals("dbPassword")) {
+					dbPassword = args[++i];
+					
+				} else {
+					errormsg("ignored parameter: -" + "argType.");
+					
+				}
+			}
+			
+		}
+		
+		Network nw = new Network();
+		try {
+			if (networkFileName == null || startDate == null || numOfPeriods == null) {
+				errormsg("Missing network file!");
+				return;
+			}
+			Calendar stime = readCalString(startDate);
+			nw.createPeriodBoundaries(stime, 12, Integer.parseInt(numOfPeriods));
+			NetworkReader.readFile(nw, networkFileName);
+			
+		} catch (IOException e1) {
+			e1.printStackTrace();
+			
+		}
+		
+
+		if (readCommodityFromDB) {
+			if (dbUsername == null || dbPassword == null) {
+				errormsg("Missing Parameter");
+				return;
+			}
+
+			try {
+				CommodityReader.readDatabase(nw, dbUsername, dbPassword);
+				Solution s = new Solution(nw, null);
+				s.readSolutionFromDatabase(dbUsername, dbPassword);
+				System.out.println(nw.outputRoutes());
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			
+			nw.combineLightTask(nw.taskSet);
+			
+		} else if (solutionFileName == null) {
+			if (networkFileName == null || startDate == null || 
+					commodityFileName == null || numOfPeriods == null) {
+				errormsg("Missing Parameter");
+				return;
+			}
+			
+			try {
+				CommodityReader.readFile(commodityFileName, nw);
+				
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			
+			nw.combineLightTask(nw.taskSet);
+			
+		} else { // comparing with existing solution.
+			try {
+				RealWorldSolutionReader rwsr = new RealWorldSolutionReader(nw);
+				rwsr.readSolution(solutionFileName);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		
+		EventBasedSimulator ebs = new EventBasedSimulator(CommodityEvent.generateEvents(nw), nw);
+		ebs.run();
+		if (readCommodityFromDB) {
+			Solution s = new Solution(nw, null);
+			s.writeSolutionToDatabase(dbUsername, dbPassword);
+		}
+		
+		try {
+			File f = new File(startDate + "_" + numOfPeriods + "__" + postfix + ".routes");
+			while (f.exists()) {
+				postfix++;
+				f = new File(startDate + "_" + numOfPeriods + "__" + postfix + ".routes");
+			}
+			PrintWriter pw = new PrintWriter(f);
+			pw.println(nw.outputRoutes());
+			pw.println(nw.getSolutionObjectiveValues());
+			pw.flush();
+			pw.close();
+			
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		}
+		StatisticsAnalyzer sa = new StatisticsAnalyzer(nw);
+		sa.outputStatistics(startDate + "_" + numOfPeriods + "__" + postfix + ".statistics");
+		writeOutput();
+	}
+	
+	public static void addToOutput(String s) {
+		if (s == null) return;
+		
+		output += s;
+	}
+	
+	public static void writeOutput() {
+		try {
+			File f = new File(startDate + "_" + numOfPeriods + "__" + postfix + ".output");
+			PrintWriter pw = new PrintWriter(f);
+			pw.println(output);
+			pw.flush();
+			pw.close();
+			
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		}
+		
+		System.out.println(output);
+	}
+	
+	public static Calendar readCalString(String s) {
+		if (s == null || s.length() != 14) {
+			//System.out.println("warning: bad date format: " + s);
+			return null;
+		}
+		Calendar c = new GregorianCalendar();
+		c.set(Integer.parseInt(s.substring(0, 4)),
+				Integer.parseInt(s.substring(4, 6)) - 1,
+				Integer.parseInt(s.substring(6, 8)),
+				Integer.parseInt(s.substring(8, 10)),
+				Integer.parseInt(s.substring(10, 12)),
+				Integer.parseInt(s.substring(12, 14)));
+		return c;
+	}
+	
+	public static void errormsg(String s) {
+		System.out.println(s);
+	}
+
+}

@@ -1,0 +1,258 @@
+package uk.ac.nottingham.ningboport.planner;
+
+import java.util.Calendar;
+import java.util.Vector;
+
+import uk.ac.nottingham.ningboport.planner.Task;
+import uk.ac.nottingham.ningboport.network.model.XMLSession;
+
+public class Route implements Identical<Route>{
+	public int id;
+	private XMLSession session;
+	public int shiftIndex; // The shift it belongs to.
+	public Vector<Task> taskSet;
+	
+	public double loadedDistance;
+	public double emptyDistance;
+	public double softTimeWindowPenalty;
+	public double waitTime;
+	/*
+	 * This is the index of which task's time window is not satisfied
+	 * This is used to help algorithm to become more efficient
+	 * and avoid unnecessary loops
+	 * 
+	 * if it is time window error: -1;
+	 * normal: -2;
+	 */
+	public int checkErrorIndex = -2;
+	
+	/*
+	 * planned startTime will still be updated based
+	 * on previous task's actualEndTime or endTime. 
+	 */
+	public Calendar startTime, endTime; //they are calculated when wanted. don't trust them.
+	public Calendar actualStartTime, actualEndTime;
+	
+	public enum status {
+		UNASSIGNED(0), ASSIGNED(1), SESSION_SUSPENDED(2), SESSION_ENDED(3);
+		
+		private int value;
+		private status(int value) {
+			this.value = value;
+		}
+		
+		public int getValue() {
+			return value;
+		}
+		
+		public static status convertFromInt(int i) {
+			if (i == 0) {
+				return UNASSIGNED;
+			} else if (i == 1) {
+				return ASSIGNED;
+			} else if (i == 2) {
+				return SESSION_SUSPENDED;
+			} else {
+				return SESSION_ENDED;
+			}
+		}
+	}; 
+	public status currentStatus = status.UNASSIGNED;
+	public Network nw;
+	
+	public Route clone() {
+		Route r = new Route(this.nw, this.id, this.shiftIndex);
+		r.id = this.id;
+		r.session = this.session; // session no need to be copied
+		r.shiftIndex = this.shiftIndex;
+		//This clone copies the TA as well not just reference.
+		int taskSetSize = taskSet.size();
+		for (int i = 0; i < taskSetSize; i++) {
+			r.taskSet.add(taskSet.get(i).clone());
+		}
+		r.loadedDistance = this.loadedDistance;
+		r.emptyDistance = this.emptyDistance;
+		r.softTimeWindowPenalty = this.softTimeWindowPenalty;
+		r.waitTime = this.waitTime;
+		
+		// shall we clone them?
+		if (this.startTime != null) {
+			r.startTime = (Calendar) this.startTime.clone();
+		}
+		
+		if (this.endTime != null) {
+			r.endTime = (Calendar) this.endTime.clone();
+		}
+		
+		if (this.actualStartTime != null) {
+			r.actualStartTime = (Calendar) this.actualStartTime.clone();
+		}
+		
+		if (this.actualEndTime != null) {
+			r.actualEndTime = (Calendar) this.actualEndTime.clone();
+		}
+		
+		r.currentStatus = this.currentStatus;
+		r.nw = this.nw;
+		return r;
+	}
+	
+	
+	public Route(Network nw, int id, int period) {
+		taskSet = new Vector<Task>();
+		this.nw = nw;
+		this.id = id;
+		this.shiftIndex = period;
+	}
+	
+	public void insert(int ta_index, int route_slot, Vector<Task> unassignedTaskSet) {
+		route_slot = route_slot > taskSet.size()? taskSet.size() : route_slot;
+		this.taskSet.add(route_slot, unassignedTaskSet.remove(ta_index));
+	}
+	
+	public void insert(Task t, int route_slot, Vector<Task> unassignedTaskSet) {
+		insert(unassignedTaskSet.indexOf(t), route_slot, unassignedTaskSet);
+	}
+	
+	public void remove(int ta_index, Vector<Task> unassignedTaskSet) {
+		unassignedTaskSet.add(this.taskSet.remove(ta_index));
+	}
+
+	
+	/*
+	 * If there is already one session assigned, it will fail
+	 */
+	public boolean setSession(XMLSession s) {
+		if (this.session != null) {
+			return false;
+		}
+		
+		this.session = s;
+		this.currentStatus = status.ASSIGNED;
+		return true;
+	}
+	
+	public XMLSession getSession() {
+		return session;
+	}
+	
+	public status getStatus() {
+		return this.currentStatus;
+	}
+	
+	public void setStatus(status s) {
+		currentStatus = s;
+	}
+	
+	public String outputPortSequence() {
+		String out = "";
+		for (int i = 0; i < taskSet.size(); i++) {
+			Task t = taskSet.elementAt(i);
+			
+			out += "[" + t.cmdt.src.id + " " + t.cmdt.dest.id + "] ";
+		}
+		
+		return out;
+	}
+	
+	/*
+	 * how much time the first task can be postponed 
+	 * without affecting the whole route plan. (inversed way of checking route).
+	 */
+	public int getTightness() {
+		//TODO implementation
+		return 0;
+	}
+	
+	public String toString() {
+		String statistics = new String(),
+				ports = "Ports: ",
+				tasks = "Tasks: ",
+				times = "Times: ",
+				timesActual = "Times(actual): ";
+		if (nw.check(this) <= 0) {
+			statistics += "*";
+			nw.updateObjectiveValues(this);
+		}
+		
+		statistics += "Route: " + this.id;
+		statistics += " ED: " + this.emptyDistance + " LD: " + this.loadedDistance;
+				
+		if (actualStartTime != null) {
+			statistics += " StartTime(actual): " +  actualStartTime.getTime();
+		} else if (startTime != null) {
+			statistics += " StartTime(planned): " +  startTime.getTime();
+		} else {
+			statistics += "no start time";
+		}
+		statistics += "\n";
+		if (actualEndTime != null) {
+			statistics += " endtime(actual): " + actualEndTime.getTime();
+		} else if (endTime != null) {
+			statistics += " endtime(planned): " + endTime.getTime();
+		} else {
+			statistics += " no end time";
+		}
+		statistics += "\n";
+		
+		for (int i = 0; i < taskSet.size(); i++) {
+			Task t = taskSet.elementAt(i);
+			
+			if (i == 0) {
+				statistics += " driver: " + t.driver + " vehicle: " + t.vehicleID;
+			}
+			
+			ports += "[" + t.cmdt.src.id + " " + t.cmdt.dest.id + "] ";
+			
+			tasks += t.cmdt.id + "(";
+			if (t.size == 1)
+				tasks += "s";
+			else // large
+				tasks += "b";
+			
+			if (t.gT != null)
+				tasks += "s";
+			
+			if (t.freezed())
+				tasks += "f";
+			
+			tasks += ") ";
+			
+			times += "<";
+			if (t.startT != null && t.finishT != null)
+				times += t.startT.getTime() + " " + t.finishT.getTime();
+			else
+				times += "Infeasible";
+
+			//times += " " + t.getLateness() + " ";
+			times +=  "> ";
+			
+			timesActual += "<";
+			if (t.actualStartT != null && t.actualFinishT != null)
+				timesActual += t.actualStartT.getTime() + " " + t.actualFinishT.getTime();
+			
+			timesActual += "--" + t.getRestTimeInMinute();
+			timesActual += "> ";
+		}
+		
+		
+			
+		return statistics + "\n" + ports + "\n" + tasks + "\n" + times + "\n" + timesActual + "\n";
+	}
+	
+	@Override
+	public boolean geographicallyIdenticalTo(Route t) {
+		if (this.taskSet.size() != t.taskSet.size())
+			return false;
+		
+		int tsize = taskSet.size();
+		Vector<Task> t2 = t.taskSet;
+		for (int i = 0; i < tsize; i++) {
+			Commodity c1 = taskSet.get(i).cmdt,
+					c2 = t2.get(i).cmdt;
+			if (!c1.geographicallyIdenticalTo(c2))
+				return false;
+		}
+		return true;
+	}
+}

@@ -1,0 +1,257 @@
+package uk.ac.nottingham.ningboport.planner.algorithms;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Vector;
+
+import uk.ac.nottingham.ningboport.planner.Network;
+import uk.ac.nottingham.ningboport.planner.Route;
+import uk.ac.nottingham.ningboport.planner.RoutingPlanner;
+import uk.ac.nottingham.ningboport.planner.Task;
+//import nbport.TransportAction.sortingMethod;
+
+class InsertAction implements Comparable<InsertAction> {
+	public int slot;
+	public Route r;
+	public Task t;
+	public double score;
+	
+	public InsertAction(Route r, Task t) {
+		this.r = r;
+		this.t = t;
+		this.score = -1;
+		this.slot = -1;
+	}
+
+	public int compareTo(InsertAction o) {
+		return Double.compare(this.score, score);
+	}
+}
+
+public class Insertion {
+	private Network nw;
+	private boolean mandatoryInsertBest, optionalInsertBest;
+	
+	int currentShiftIndex;
+	Vector<Route> currentShift;
+	public Insertion(Network nw, boolean pickBestMan, boolean pickBestOpt) {
+		this.nw = nw;
+		this.mandatoryInsertBest = pickBestMan;
+		this.optionalInsertBest = pickBestOpt;
+	}
+	
+	/*
+	 * Initialize EMPTY routes with a most emergent task 
+	 */
+	private void initializeRoutes(Vector<Task> tasks) {
+		Object[] t = tasks.toArray();
+		//Task.sortBy = Task.sortingMethod.AVAIL_TIME;
+		Task.sortBy = Task.sortingMethod.DEADLINE;
+		Arrays.sort(t);
+		
+		/*
+		 * why shift by shift? cus if it is available time based,
+		 * the some later tasks are inserted first, which is not
+		 * good for completing all tasks.
+		 */
+		for (int i = 0; i < t.length & i < currentShift.size(); i++) {
+			Route r = currentShift.elementAt(i);
+			if (!r.taskSet.isEmpty()) {
+				int size = r.taskSet.size();
+				r.insert((Task) t[i], size, tasks);
+				int check = nw.check(r);
+				if (check < 1) {
+					//				System.out.println("Failed to give initial node at route " + i + 
+					//						" check code " + check);
+					//				System.out.println("Commodity: " + r.taskSet.get(0).cmdt);
+					r.remove(size, tasks);
+					break;
+				}
+				//continue;
+			} else {
+				r.insert((Task) t[i], 0, tasks);
+
+				int check = nw.check(r);
+				if (check < 1) {
+					//				System.out.println("Failed to give initial node at route " + i + 
+					//						" check code " + check);
+					//				System.out.println("Commodity: " + r.taskSet.get(0).cmdt);
+					r.remove(0, tasks);
+					break;
+				}
+			}
+		}
+	}
+	
+	/*
+	 * 1. choose first node for all routes.
+	 *
+	 * 2. loop until no more nodes
+	 *     2.1 calculate best insertion for all routes. generate a ta list
+	 *     2.2 evaluate these insertions by a criteria
+	 *     2.3 execute insertion
+	 *     2.4 if there are ta not inserted, go back to 2.1
+	 */
+	public void run(int startShift, int endShift) {
+		System.out.println("=== Insertion Started ===");
+		
+		int numberOfShifts = nw.getNumberOfShifts();
+		for (int i = startShift; i <= endShift && i < numberOfShifts; i++) {
+			currentShiftIndex = i;
+			currentShift = nw.routesOfShifts.elementAt(i);
+			//Mandatory tasks for this period first
+			Vector<Task> mandatory = nw.getShiftTasks(i, true);
+			initializeRoutes(mandatory);
+			while (mandatory.size() != 0) {
+				if (!insertActionsToRoutes(mandatory, this.mandatoryInsertBest)) {
+					break;
+				}
+			}
+			
+			int mandatoryLeft = mandatory.size();
+			
+			if (mandatoryLeft > 0) {
+				System.out.printf("shift: %d\tm: %d\n", i, mandatoryLeft);
+				for (int s = 0; s < mandatoryLeft; s++) {
+					System.out.println(mandatory.get(s));
+				}
+			}
+			
+			nw.returnTasks(mandatory);
+			
+			//optional tasks
+			for (int j = i + 1; j < i + 8 && j <= numberOfShifts; j++) {
+				Vector<Task> optional;
+				if (j < numberOfShifts) {
+					optional = nw.getShiftTasks(j, true);
+				} else {
+					optional = nw.getShiftTasks(j - 1, false);
+				}
+				
+				initializeRoutes(optional);
+				while (optional.size() != 0) {
+					if (!insertActionsToRoutes(optional, this.optionalInsertBest)) {
+						break;
+					}
+				}
+				
+//				int optionalLeft = optional.size();
+//				if (optionalLeft > 0) {
+//					System.out.printf("shift: %d\to: %d\n", j, optionalLeft);
+//				}
+				//nw.uncombineLightTask(optional);
+				nw.returnTasks(optional);
+			} // optional routing complete
+			
+		}
+		nw.checkAllRoutes();
+		
+		System.out.println("=== Insertion Finished ===\n\n");
+	}
+	
+	/*
+	 * Try for all commodities on every route.
+	 * choose the best insertion slot and get the insertActions
+	 * with a score.
+	 * 
+	 * for each route, do the best insertion
+	 */
+	private boolean 
+	insertActionsToRoutes(Vector<Task> unnassigned, boolean only_best) {
+		Vector<InsertAction> ias = new Vector<InsertAction>();
+		for (int i = 0; i < unnassigned.size(); i++) {
+			for (int j = 0; j < currentShift.size(); j++) {
+				InsertAction ia = findBestSlot(unnassigned.elementAt(i), currentShift.elementAt(j));
+				if (ia!= null && ia.slot != -1) {
+					if (only_best) {
+						if (ias.size() == 0 || Double.compare(ia.score, ias.lastElement().score) < 0) {
+							ias.removeAllElements();
+							ias.add(ia);
+						}
+					
+					} else {
+						ias.add(ia);
+					}
+				}
+			} // currentPeriod.size
+		} // uta.size
+		
+		if (ias.size() == 0) {
+			return false;
+		}
+		
+		if (only_best) {
+			InsertOneAction(ias, unnassigned);
+			
+		} else {
+			Collections.sort(ias);
+			
+			while(ias.size() > 0)
+				InsertOneAction(ias, unnassigned);
+		}
+		return true;
+	}
+
+	private void InsertOneAction(Vector<InsertAction> ias, Vector<Task> uta) {
+		InsertAction ia = ias.elementAt(0);
+		ia.r.insert(ia.t, ia.slot, uta);
+		//System.out.println("Inserted one." + ia.t.cmdt);
+		// remove actions that has same ta and route.
+		for (int i = 0; i < ias.size(); i++) {
+			InsertAction ia2 = ias.elementAt(i);
+			if (ia2.t.equals(ia.t) || ia2.r.equals(ia.r)) {
+				ias.remove(i--);
+			}
+		}
+	}
+	
+	/*
+	 * Finds best slot for action t at route.
+	 * best slot is the minimum score
+	 */
+	private InsertAction findBestSlot(Task t, Route r) {
+		if (nw.check(r) < 1) { //Failed
+			RoutingPlanner.errormsg("find slot: Bad route");
+			System.exit(0);
+		}
+		
+		InsertAction ia = new InsertAction(r, t);
+		ia.score = 99999;// minimize problem, so give large initial number
+		if (r.actualEndTime != null) {
+			return ia;
+		}
+		
+		Vector<Task> taskSetR = r.taskSet;
+		int rSize = taskSetR.size();
+		
+		//old Values
+		double loadedDistanceO = r.loadedDistance;
+		double emptyDistanceO = r.emptyDistance;
+		double softTwPenalty = r.softTimeWindowPenalty;
+
+		//Slot test
+		double emptyRateIncrease;
+		for (int i = rSize; i >= 0; i--) {
+			if (i != rSize && taskSetR.get(i).freezed()) {
+				continue;
+			}
+			
+			taskSetR.add(i, t);
+			if (nw.check(r) < 1) { //Failed
+				taskSetR.remove(i);
+				continue;
+			}
+			
+			emptyRateIncrease = (r.emptyDistance + r.softTimeWindowPenalty )/ (r.emptyDistance + r.loadedDistance) 
+					- (emptyDistanceO + softTwPenalty) / (emptyDistanceO + loadedDistanceO);
+			
+			if (Double.compare(emptyRateIncrease, ia.score) < 0) {
+				ia.score = emptyRateIncrease;
+				ia.slot = i;
+			}
+			
+			taskSetR.remove(i);
+		}
+		return ia;
+	}
+}

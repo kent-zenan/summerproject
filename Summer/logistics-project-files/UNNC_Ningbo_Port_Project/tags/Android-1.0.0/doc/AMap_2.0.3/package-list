@@ -1,0 +1,8 @@
+com.amap.api.maps
+com.amap.api.maps.model
+com.amap.api.offlinemap
+com.amap.api.search.busline
+com.amap.api.search.core
+com.amap.api.search.geocoder
+com.amap.api.search.poisearch
+com.amap.api.search.route

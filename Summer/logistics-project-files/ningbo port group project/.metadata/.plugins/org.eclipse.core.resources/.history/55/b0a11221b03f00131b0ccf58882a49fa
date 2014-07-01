@@ -1,0 +1,674 @@
+package uk.ac.nottingham.ningboport.planner;
+
+import java.util.Calendar;
+import java.util.Vector;
+import uk.ac.nottingham.ningboport.planner.Route.status;
+import uk.ac.nottingham.ningboport.network.model.XMLSession;
+
+public class Network {
+	//Network definition
+	public Vector<Node> nodes;
+	public Node depot;
+	public double travelingTimes[][];
+	public double travelingTimesWithQueue[][];
+	public double travelingDistances[][];
+	public Vector<Vector <Route>> routesOfShifts;
+	public int loadedVehilceFuelCost = 0, emptyVehicleFuelCost = 0;
+	public int maxVehicleQuantity = 0;
+	
+	/*They are initialized together in createTimes()*/
+	public Calendar shiftStartTimes[];
+	public Calendar shiftEndTimes[];
+	public Vector<Vector<Commodity>> mandatoryCommodities; // vector for each period
+	public Vector<Vector<Commodity>> optionalCommodities;
+	public int periodLength = -1;
+	/*Because the length of array is only known after network and parameter is read*/
+	
+	//----Commodity Settings----//
+	// Contains all task generated from list
+	public Vector<Task> taskSet; 
+	public Vector<Commodity> commodities; // kept for quick linking
+	
+	//algorithm related
+	public Calendar alg_stime;
+	
+	// ------------------------ Methods for initializing network ----------------------//
+	public Network() {
+		nodes = new Vector<Node>();
+		taskSet = new Vector<Task>();
+		commodities = new Vector<Commodity>();
+		alg_stime = Calendar.getInstance();
+		//commodities = new Vector<Commodity>();
+	}
+	
+	/*
+	 * Create starting/ending times for different periods
+	 */
+	public void createPeriodBoundaries(Calendar stime, int pLengthInHour, int shiftQuantity) {
+		mandatoryCommodities = new Vector<Vector<Commodity>>(shiftQuantity);
+		optionalCommodities = new Vector<Vector<Commodity>>(shiftQuantity);
+		periodLength = pLengthInHour;
+		shiftStartTimes = new Calendar[shiftQuantity];
+		shiftEndTimes = new Calendar[shiftQuantity];
+		for (int i = 0; i < shiftQuantity; i++) {
+			shiftStartTimes[i] = (Calendar) stime.clone();
+			stime.add(Calendar.HOUR_OF_DAY, pLengthInHour);
+			shiftEndTimes[i] = (Calendar) stime.clone();
+			mandatoryCommodities.add(new Vector<Commodity>());
+			optionalCommodities.add(new Vector<Commodity>());
+			//System.out.printf("period %d:\n\tStart:%s\n\tEnd:%s\n",
+			//		i, periodStartTimes[i].getTime(), periodEndTimes[i].getTime());
+		}
+	}
+	
+	public void createEmptyRoutes(int numberOfRoutes) {
+		routesOfShifts = new Vector<Vector <Route>>();
+		for (int i = 0; i < shiftStartTimes.length; i++) {
+			Vector<Route> r = new Vector<Route>();
+			routesOfShifts.add(r);
+			for (int j = 0; j < numberOfRoutes; j++) {
+				r.add(new Route(this, j, i));
+			}
+		}
+		//System.out.printf("There are %d periods with %d routes in each \n", 
+		//		routesOfPeriods.size(), routesOfPeriods.elementAt(0).size());
+	}
+	
+	// -------------------------------- Shift tool -------------------------------------------/
+	public int getNumberOfShifts() {
+		if (routesOfShifts == null)
+			return 0;
+		
+		return routesOfShifts.size();
+	}
+	
+	// -------------------------------- Node / arc tool -------------------------------------------/
+	public Node findNode(String id) {
+		for (int i = 0; i < nodes.size(); i++) {
+			if (nodes.elementAt(i).id.equals(id))
+				return nodes.elementAt(i);
+		}
+		
+		return null;
+	}
+
+	//---------------------------------- Methods for Task/Commodity manipulate ---------------------------//
+	
+	public Commodity findCommodity(String commodityID) {
+		int csize = this.commodities.size();
+		for (int i = 0; i < csize; i++) {
+			if (commodities.get(i).id.equals(commodityID)) {
+				return commodities.get(i);
+			}
+		}
+		
+		return null;
+	}
+	
+	public Vector<Task> commodityTasks(Commodity c) {
+		Vector<Task> allTasks = new Vector<Task>();
+		int routesOfShiftsSize = routesOfShifts.size();
+		for (int i = 0; i < routesOfShiftsSize; i++) {
+			Vector<Route> shiftI = routesOfShifts.get(i);
+			int shiftISize = shiftI.size();
+			for (int j = 0; j < shiftISize; j++) {
+				allTasks.addAll(shiftI.get(j).taskSet);
+			}
+		}
+		allTasks.addAll(taskSet);
+		
+		Vector<Task> cTasks = new Vector<Task>();
+		int allTaskSize = allTasks.size();
+		for (int i = 0; i < allTaskSize; i++) {
+			Task t = allTasks.get(i);
+			if (t.cmdt.id.equals(c.id)) {
+				cTasks.add(t);
+				if (t.gT != null)
+					cTasks.add(t.gT);
+			}
+		}
+		return cTasks;
+	}
+	
+	/*
+	 * This classify commodities in nw.commodities
+	 * into mandatory and optional for each period
+	 */
+	public void classifyCommodities() {
+		mandatoryCommodities = new Vector<Vector<Commodity>>(getNumberOfShifts());
+		optionalCommodities = new Vector<Vector<Commodity>>(getNumberOfShifts());
+		int shiftQuantity = getNumberOfShifts();
+		for (int i = 0; i < shiftQuantity; i++) {
+			mandatoryCommodities.add(new Vector<Commodity>());
+			optionalCommodities.add(new Vector<Commodity>());
+		}
+		
+		int commodityQuantity = commodities.size();
+		for (int i = 0; i < commodityQuantity; i++) {
+			classifyCommodity(commodities.get(i));
+		}
+	}
+	
+	public void classifyCommodity(Commodity c) {
+		Vector<Task> cTasks = commodityTasks(c);
+		if (cTasks.isEmpty()) return; // Commodity can contain zero tasks -_-b
+		
+		c.completableShifts.clear();
+		int numberOfShifts = this.getNumberOfShifts();
+		for (int i = 0; i < numberOfShifts; i++) {
+			Route tmp = new Route(this, 1, i);
+			tmp.taskSet.add(cTasks.firstElement());
+			int res = tmp.nw.check(tmp);
+			if (res > 0)
+				c.completableShifts.add(i);
+		}
+		
+		if (c.completableShifts.size() > 0) {
+			c.latestPeriod = c.completableShifts.lastElement();
+			c.completableShifts.remove(c.completableShifts.lastElement());
+			
+			mandatoryCommodities.get(c.latestPeriod).add(c);
+			for (int i = 0; i < c.completableShifts.size(); i++) {
+				optionalCommodities.get(c.completableShifts.get(i)).add(c);
+			}
+		}
+	}
+	
+	//Returns the time need to transport this commodity (without grabbed task)
+	public double getCommodityTimeConsumption(Commodity c) {
+		return travelingTimes[c.src.index][c.dest.index] + c.src.loadTime + c.dest.unloadTime;
+	}
+
+	public Task getTaskByID(String ID, boolean takeOutTask) {
+		for (int i = 0; i < this.taskSet.size(); i++) {
+			if (taskSet.get(i).cmdt.id.equals(ID)) {
+				if (takeOutTask) 
+					return taskSet.remove(i);
+				else
+					return taskSet.get(i);
+			}
+		}
+		return null;
+	}
+	
+	//get all TA of this period, also removes the related one in nw.ta
+	// optionalTaskTimeLimit is within how many hours should the optional tasks be. 
+	public Vector<Task> getShiftTasks(int periodIndex, boolean mandatory) {
+		Vector<Task> periodTaskSet = new Vector<Task>();
+		Vector<Commodity> commoditySet;
+		if (mandatory) commoditySet = mandatoryCommodities.elementAt(periodIndex);
+		else commoditySet = optionalCommodities.elementAt(periodIndex);
+		
+		for (int i = 0; i < commoditySet.size(); i++) {
+			Commodity c = commoditySet.elementAt(i);
+			if (!c.revealed)
+				continue;
+			
+			for (int j = 0; j < taskSet.size(); j++) {
+				Task t = taskSet.elementAt(j);
+				if (t.cmdt.id.equals(c.id)) {
+					periodTaskSet.add(t);
+					taskSet.remove(j--);
+				}
+			}
+		}
+		return periodTaskSet;
+	}
+	
+	public void returnTasks(Vector<Task> detachedTA) {
+		taskSet.addAll(detachedTA);
+		detachedTA.clear();
+	}
+	
+	public void combineLightTask(Vector<Task> unassignedTa) {
+		//int count = 0;
+		for (int i = 0; i < unassignedTa.size(); i++) {
+			Task ti = unassignedTa.elementAt(i);
+			if (ti.size == 2 || ti.gT != null)
+				continue;
+
+			for (int j = i + 1; j < unassignedTa.size(); j++) {
+				Task tj = unassignedTa.elementAt(j);
+				if (tj.size == 2 || tj.gT != null)
+					continue;
+				
+				if (ti.cmdt.id.equals(tj.cmdt.id)) {
+					ti.gT = tj;
+					unassignedTa.remove(j);
+					//count++;
+					break;
+				}
+			}
+		}
+		//System.out.println("combined: " + count);
+	}
+	
+	public void uncombineLightTask(Vector<Task> unassignedTA) {
+		int tsize = unassignedTA.size();
+		Vector<Task> TAtemp = new Vector<Task>();
+		for (int i = 0; i < tsize; i++) {
+			Task t = unassignedTA.get(i);
+			if (t.gT != null) {
+				TAtemp.add(t.gT);
+				t.gT = null;
+			}
+		}
+		unassignedTA.addAll(TAtemp);
+	}
+
+	// -----------------------------Info outputting ------------------------//
+	public String getCommodityInfo() {
+		String s = new String();
+		s += "id\tsource node\tdest node\tsmall\tlarge\n";
+		for (int i = 0; i < commodities.size(); i++) {
+			s += commodities.elementAt(i) + "\n";
+		}
+		return s;
+	}
+	
+	public String outputRoutes() {
+		String output = "";
+		for (int i = 0; i < routesOfShifts.size(); i++) {
+			output += "===Shift " + i + " (from " + this.shiftStartTimes[i].getTime()
+		+ ")" + " with " + routesOfShifts.get(i).size() + " routes===\n";
+			Vector<Route> currentPeriod = routesOfShifts.elementAt(i);
+			for (int j = 0; j < currentPeriod.size(); j++) { 
+				output += currentPeriod.elementAt(j).toString() + "\n";
+			}
+		}
+		return output;
+	}
+	
+	public String getCommodityCount() {
+		String output = "";
+		if (this.routesOfShifts == null || this.taskSet == null) {
+			return "No commodity data read.";
+		}
+		
+		output += "Tasks in unrouted task set: ";
+		int unroutedTaskCount = 0;
+		for (int i = 0; i < taskSet.size(); i++) {
+			if (taskSet.get(i).gT == null)
+				unroutedTaskCount++;
+			else
+				unroutedTaskCount += 2;
+		}
+		output += unroutedTaskCount + "\n";
+		
+		int routedTasksCount = 0, numberOfShifts = this.getNumberOfShifts();
+		for (int p = 0; p < numberOfShifts; p++) {
+			for (int r = 0; r < routesOfShifts.get(p).size(); r++) {
+				Vector<Task> ts = routesOfShifts.get(p).get(r).taskSet;
+				for (int t = 0; t < ts.size(); t++) {
+					if (ts.get(t).gT == null) {
+						routedTasksCount += 1;
+					} else {
+						routedTasksCount += 2;
+					}
+				}
+			}
+		}
+		output += "Tasks routed: ";
+		output += routedTasksCount + "\n";
+		return output;
+	}
+	
+	// -------------------------  Route Session Management    ----------------------------//
+	public boolean assignSession(Route r, XMLSession s) {
+		return false;
+	}
+	
+	public boolean startSession(Route r) {
+		if (r.getSession() == null) {
+			return false;
+		}
+		
+		r.setStatus(status.ASSIGNED);
+		return true;
+	}
+	
+	public boolean suspendSession(Route r) {
+		if (r.getSession() == null) {
+			return false;
+		}
+		
+		r.setStatus(status.SESSION_SUSPENDED);
+		return true;
+	}
+	
+	public boolean resumeSession(Route r) {
+		if (r.getSession() == null) {
+			return false;
+		}
+		
+		r.setStatus(status.ASSIGNED);
+		return true;
+	}
+	
+	public boolean endSession(Route r) {
+		if (r.getSession() == null) {
+			return false;
+		}
+		
+		r.setStatus(status.SESSION_ENDED);
+		return true;
+	}
+	
+	// -------------------------  Route checking / evaluating ----------------------------//
+	
+	public int getTotalRoutedTaskCount() {
+		int count = 0;
+		int nShifts = this.routesOfShifts.size();
+		for(int i = 0; i < nShifts; i++) {
+			count += getShiftRoutedTaskCount(i);
+		}
+		
+		return count;
+	}
+	
+	public int getShiftRoutedTaskCount(int shiftI) {
+		int count = 0;
+		Vector<Route> routesInShiftI = routesOfShifts.get(shiftI);
+		int shiftISize = routesInShiftI.size();
+		for (int j = 0; j < shiftISize; j++) {
+			count += routesInShiftI.get(j).taskSet.size();
+		}
+		return count;
+	}
+	
+	/*
+	 * result array:
+	 * [empty, loaded]
+	 */
+	public String getSolutionObjectiveValues() {
+		String res = "=============== Objective Values ===============\n";
+		int psize = routesOfShifts.size();
+		double total_e = 0, total_l = 0;
+		if (!this.checkAllRoutes()) {
+			System.out.println("Route infeasibility occured!");
+			updateAllObjectValues();
+		}
+		
+		res += "Shift\tLD\tED\tLDR\tCount\n"; 
+		for (int i = 0; i < psize; i++) {
+			res += i +  "\t";
+			double e = 0, l = 0;
+			
+			Vector<Route> shift = routesOfShifts.elementAt(i);
+			int rsize = shift.size();
+			
+			for (int j = 0; j < rsize; j++) {
+				e+= shift.elementAt(j).emptyDistance;
+				l+= shift.elementAt(j).loadedDistance;
+				total_e += shift.elementAt(j).emptyDistance;
+				total_l += shift.elementAt(j).loadedDistance;
+				
+			}
+			res += l + "\t" + e + "\t";
+			res += (l / (e + l)) + "\t" + this.getShiftRoutedTaskCount(i) + "\n"; 
+			
+		}
+		
+		res += "Avg\t" + total_l + "\t" + total_e + 
+				"\t" + (total_l / (total_l + total_e)) + 
+				"\t" + this.getTotalRoutedTaskCount() + "\n";
+		return res;
+	}
+	
+	public String getShiftObjectiveValues(int shiftIndex) {
+		String out = "";
+		Vector<Route> shift = this.routesOfShifts.get(shiftIndex);
+		double e = 0, l = 0;
+		int rsize = shift.size();
+		
+		for (int j = 0; j < rsize; j++) {
+			e += shift.elementAt(j).emptyDistance;
+			l += shift.elementAt(j).loadedDistance;
+		}
+		out += l + "\t" + e + "\t" + (l / (e + l)); 
+		return out;
+	}
+	
+	public boolean checkAllRoutes() {
+		int psize = routesOfShifts.size();
+		for (int i = 0; i < psize; i++) {
+			Vector<Route> r = routesOfShifts.elementAt(i);
+			int rsize = r.size();
+			for (int j = 0; j < rsize; j++) {
+				int checkResult = r.elementAt(j).nw.check(r.elementAt(j));
+				if (checkResult < 1)
+					return false;
+			}
+		}
+		
+		return true;
+	}
+
+	public void updateAllObjectValues() {
+		int psize = routesOfShifts.size();
+		for (int i = 0; i < psize; i++) {
+			Vector<Route> r = routesOfShifts.elementAt(i);
+			int rsize = r.size();
+			for (int j = 0; j < rsize; j++) {
+				updateObjectiveValues(r.get(j));
+			}
+		}
+		
+		
+	}
+	/*
+	 * Updates: emptyDistance, loadedDistance
+	 */
+	public void updateObjectiveValues(Route r) {
+		Vector<Task> taskSet = r.taskSet;
+		r.emptyDistance = r.loadedDistance = 0;
+		
+		for (int i = 0; i < taskSet.size(); i++) {
+			Task taskI = r.taskSet.elementAt(i);
+			Commodity c = taskI.cmdt;
+			int srcI = c.src.index, 
+					destI = c.dest.index, 
+					depotI = depot.index;
+			
+			//find and check grabbed commodity
+			Commodity g = null;
+			int gSrcI = 0, gDestI = 0;
+			if (taskI.gT != null) {
+				g = taskI.gT.cmdt;
+				gSrcI = g.src.index;
+				gDestI = g.dest.index;
+				if (taskI.size == 2 || taskI.size == 2) {
+					RoutingPlanner.errormsg("Checking Route: Error, overweight when grabbing additional ta.");
+					System.exit(0);
+				}
+			}
+
+			//dead heading to source node.
+			if (i == 0) { //depot to src
+				r.emptyDistance += travelingDistances[depotI][srcI];
+				
+			} else {//dest to src
+				Commodity c2 = r.taskSet.elementAt(i - 1).cmdt;
+				if (!c.src.equals(c2.dest)) {
+					r.emptyDistance += travelingDistances[c2.dest.index][srcI];
+				}
+			}
+			
+			// load time of commodity c
+			if (g == null) {
+				//src -> dest
+				r.loadedDistance += travelingDistances[srcI][destI];
+			} else {
+				//src -> gSrc
+				r.loadedDistance += travelingDistances[srcI][gSrcI];
+				
+				//gSrc -> gDest
+				r.loadedDistance += travelingDistances[gSrcI][gDestI];
+			
+				//gDest -> dest
+				r.loadedDistance += travelingDistances[gDestI][destI];
+			}
+			
+			// if last task, go back to depot
+			if (i == r.taskSet.size() - 1) {  //dest to depot
+				r.emptyDistance += travelingDistances[destI][depotI];
+			}
+		}
+		
+	}
+
+	public Route getPreviousRoute(Route r) {
+		int currentShiftI = r.shiftIndex;
+		int previousShiftI = currentShiftI - 1;
+		if (previousShiftI < 0)
+			return null;
+		
+		int routeI = routesOfShifts.get(currentShiftI).indexOf(r);
+		if (routeI < 0)
+			return null;
+		
+		return routesOfShifts.get(previousShiftI).get(routeI);
+	}
+	
+	
+	/*
+	 * 3: passed (emergent)
+	 * 2: xx
+	 * 1: passed
+	 * 0: Shift time window fail
+	 * -1: task time window fail
+	 */
+	public int check(Route route) {
+		int shiftIndex = route.shiftIndex;
+		route.loadedDistance = route.emptyDistance 
+				= route.waitTime = route.softTimeWindowPenalty = 0;
+
+		Calendar currentTime;
+		
+		//shift start time
+		if (route.actualStartTime != null) {
+			currentTime = (Calendar) route.actualStartTime.clone();
+			
+		} else { // try to use route.startTime
+			final Calendar currentShiftStart = shiftStartTimes[shiftIndex];
+			Route previousRoute = getPreviousRoute(route);
+			if (previousRoute == null) {
+				route.startTime = (Calendar) currentShiftStart.clone();
+				
+			} else if (previousRoute.actualEndTime != null) { // use previousRoute.actualEndTime
+				if (previousRoute.actualEndTime.after(currentShiftStart))
+					route.startTime = (Calendar) previousRoute.actualEndTime.clone();
+				else
+					route.startTime = (Calendar) currentShiftStart.clone();
+				
+			} else { // != null && actualEndTime == null ** use previousRoute.endTime
+				if (check(previousRoute) < 1) {
+					RoutingPlanner.errormsg("check route: previous route check failed!!");
+				}
+				
+				if (previousRoute.endTime.after(currentShiftStart))
+					route.startTime = (Calendar) previousRoute.endTime.clone();
+				else
+					route.startTime = (Calendar) currentShiftStart.clone();
+				
+			}
+			
+			currentTime = (Calendar) route.startTime.clone();
+		}
+		
+		int depotI = depot.index;
+		int taskSetSize = route.taskSet.size();
+		for (int i = 0; i < taskSetSize; i++) {
+			Task taskI = route.taskSet.elementAt(i);
+			taskI.emergent = false;
+			Commodity c = taskI.cmdt;
+			int srcI = c.src.index, 
+					destI = c.dest.index; 
+					
+	
+			//dead heading to source node.
+			if (i == 0) { //depot to src
+				currentTime.add(Calendar.MINUTE, (int) travelingTimes[depotI][srcI]);
+				route.emptyDistance += travelingDistances[depotI][srcI];
+				
+			} else {//dest to src
+				Commodity c2 = route.taskSet.elementAt(i - 1).cmdt;
+				if (!c.src.equals(c2.dest)) {
+					currentTime.add(Calendar.MINUTE, (int) travelingTimes[c2.dest.index][srcI]);
+					route.emptyDistance += travelingDistances[c2.dest.index][srcI];
+				}
+			}
+			
+			//Carrier just arrived at source node.
+			// set up task's start time
+			if (taskI.actualStartT != null) { 
+				currentTime = (Calendar) taskI.actualStartT.clone();
+				
+			} else { // use taskI.startT
+				if (currentTime.compareTo(c.availTime) < 0) { // arrive too early
+					route.waitTime += (c.availTime.getTimeInMillis() - currentTime.getTimeInMillis())
+							/ 1000 / 60; 
+					taskI.startT = (Calendar) c.availTime.clone();
+					
+				} else {
+					taskI.startT = (Calendar) currentTime.clone();
+					
+				}
+				
+				currentTime = (Calendar) taskI.startT.clone();
+			}
+			
+			// emergency task?
+			taskI.emergent = (int) ((c.deadline.getTimeInMillis() - currentTime.getTimeInMillis()) / 1000 / 60 - 120) // should arrive earlier, not just in time!! 
+					< travelingTimesWithQueue[srcI][destI];
+			
+			// loaded Distance
+			route.loadedDistance += travelingDistances[srcI][destI];
+			
+			// set up finish time
+			if (taskI.actualFinishT != null) {
+				currentTime = (Calendar) taskI.actualFinishT.clone();
+				
+			} else { //taskI.finishT
+				taskI.finishT = (Calendar) taskI.startT.clone();
+				taskI.finishT.add(Calendar.MINUTE, (int) travelingTimesWithQueue[srcI][destI]);
+				
+				// deadline check
+				if (taskI.finishT.after(c.deadline)) {
+					route.checkErrorIndex = i;
+					return -1;
+				}
+				
+				currentTime = (Calendar) taskI.finishT.clone();
+			}
+			
+			// shift end check
+			if (i == taskSetSize - 1) {
+				route.emptyDistance += travelingDistances[destI][depotI];
+				
+				route.endTime = (Calendar) currentTime.clone();
+				route.endTime.add(Calendar.MINUTE, (int) travelingTimes[destI][depotI]);
+				if (currentTime.compareTo(shiftEndTimes[shiftIndex]) > 0) {
+					if (taskI.emergent) { // emergent and it is last task
+						route.checkErrorIndex = -2;
+						return 3;
+						
+					} else {
+						route.checkErrorIndex = -1;
+						return 0;
+						
+					}
+				}
+			}
+		} // for loop of task set
+		
+		if (route.endTime == null && route.actualEndTime == null)
+			route.endTime = shiftEndTimes[shiftIndex];
+		
+		//success!!
+		route.checkErrorIndex = -2;
+		return 1;
+	}
+	
+	
+}

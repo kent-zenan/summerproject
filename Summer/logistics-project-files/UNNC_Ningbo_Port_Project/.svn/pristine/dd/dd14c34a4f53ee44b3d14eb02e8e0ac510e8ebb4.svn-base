@@ -1,0 +1,140 @@
+package uk.ac.nottingham.ningboport.planner;
+
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.sql.DriverManager;
+import java.util.Calendar;
+import java.util.Vector;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+
+public class CommodityReader {
+	private static Vector<String> commodityFile = new Vector<String>();
+	public static void readFile(String path, Network nw) throws IOException {
+		BufferedReader br;
+		br = new BufferedReader(new FileReader(path));
+		String lineStr;
+		while((lineStr = br.readLine()) != null) {
+			commodityFile.add(lineStr);
+		}
+		br.close();
+		parseCommodity(nw);
+	}
+	
+	/* 
+	 * Correct format is like:
+	 * Id::from::to::import time::finish time::small::large
+	 */
+	private static void parseCommodity(Network nw) {
+		Calendar firstPeriodStartTime = nw.shiftStartTimes[0]; // Earliest time
+		Calendar lastPeriodsEndTime = nw.shiftEndTimes[nw.shiftEndTimes.length - 1]; // Latest Time
+		commodityFile.remove(0); //remove the heading
+		for (int i = 0; i < commodityFile.size(); i++) {
+			String ts[] = commodityFile.elementAt(i).split("\t");
+			if (ts.length != 7) {
+				RoutingPlanner.errormsg("Wrong commodity file!");
+				System.exit(0);
+			}
+			
+			Node from = nw.findNode(ts[1]);
+			int fromI = nw.nodes.indexOf(from);
+			Node to = nw.findNode(ts[2]);
+			int toI = nw.nodes.indexOf(to);
+			double fuel = nw.travelingDistances[fromI][toI] / 100;
+			
+			Calendar commodityAvailTime = RoutingPlanner.readCalString(ts[3]);
+			
+			if (commodityAvailTime.after(lastPeriodsEndTime))
+				continue;
+			
+			Calendar commodityDeadline = RoutingPlanner.readCalString(ts[4]);
+			
+			if (commodityDeadline.before(firstPeriodStartTime))
+				continue;
+			
+			Commodity c = new Commodity(ts[0], 
+					commodityAvailTime, commodityDeadline, 
+					from, to, Integer.parseInt(ts[5]), Integer.parseInt(ts[6]));
+			nw.commodities.add(c);
+			int total = c.small + c.large;
+			for (int j = 0; j < total; j++) {
+				Task t = new Task();
+				if (j >= c.small) t.size = 2;
+				else t.size = 1;
+				t.fuel = fuel;
+				t.cmdt = c;
+				//c.tasks.add(t);
+				nw.taskSet.add(t);
+			}
+			
+			
+		} // for all lines
+		nw.classifyCommodities();
+	}
+
+	public static void readDatabase(Network nw, String name, String password) throws IOException {
+		try {
+			Class.forName("com.mysql.jdbc.Driver");
+			Connection connect = DriverManager.getConnection("jdbc:mysql://localhost/nbp", name, password);
+			Statement s = connect.createStatement();
+			ResultSet r = s.executeQuery("SELECT * FROM Commodity;");
+
+			Calendar firstPeriodStartTime = nw.shiftStartTimes[0]; // Earliest time
+			Calendar lastPeriodsEndTime = nw.shiftEndTimes[nw.shiftEndTimes.length - 1]; // Latest Time
+			//String fieldNames[] = {"id", "source", "destination", "available_t", "deadline", "small", "large", "finished_small", "finished_large"};
+
+			while (r.next()) {
+				//System.out.println(i++);
+				Node from = nw.findNode(r.getString("source"));
+				int fromI = nw.nodes.indexOf(from);
+				Node to = nw.findNode(r.getString("destination"));
+				int toI = nw.nodes.indexOf(to);
+				double fuel = nw.travelingDistances[fromI][toI] / 100;
+				
+				Calendar commodityAvailTime = Calendar.getInstance(); 
+				commodityAvailTime.setTime(r.getDate("available_t", commodityAvailTime));
+				
+				if (commodityAvailTime.after(lastPeriodsEndTime))
+					continue;
+				
+				Calendar commodityDeadline = Calendar.getInstance();
+				commodityDeadline.setTime(r.getDate("deadline", commodityDeadline));
+				
+				if (commodityDeadline.before(firstPeriodStartTime))
+					continue;
+				
+				Commodity c = new Commodity(r.getString("id"), 
+						commodityAvailTime, commodityDeadline, 
+						from, to, r.getInt("small") - r.getInt("finished_small"), 
+						r.getInt("large") - r.getInt("finished_large"));
+				
+				//System.out.println(c.id);
+				nw.commodities.add(c);
+				int total = c.small + c.large;
+				for (int j = 0; j < total; j++) {
+					Task t = new Task();
+					if (j >= c.small) t.size = 2;
+					else t.size = 1;
+					t.fuel = fuel;
+					t.cmdt = c;
+					//c.tasks.add(t);
+					nw.taskSet.add(t);
+				}
+			}
+			nw.classifyCommodities();
+			
+			connect.close();
+			
+		} catch (SQLException e) {
+			e.printStackTrace();
+			
+		} catch (ClassNotFoundException e) {
+			
+			e.printStackTrace();
+		}
+		
+	}
+}

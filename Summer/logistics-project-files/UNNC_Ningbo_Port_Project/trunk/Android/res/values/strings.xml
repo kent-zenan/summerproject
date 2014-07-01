@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">NBPScheduling</string>
+    
+    <string name="menu_settings">Settings</string>
+    <string name="menu_about">About</string>
+    <string name="id">ID</string>
+	<string name="from">From</string>
+	<string name="to">To</string>
+	<string name="ETA">ETA</string>
+	<string name="login">User login</string>
+	<string name="un">User name</string>
+	<string name="pw">Password</string>
+	<string name="vid">Vehicle ID</string>
+	<string name="loginBtn">Login</string>
+	
+	<string name="activitylogin">Login</string>
+	<string name="activityList">Task List</string>
+	<string name="activityAbout">About</string>
+	<string name="activitySettings">Settings</string>
+	<string name="activityMap">Map</string>
+	
+	<string name="about">
+	    The Ningbo Port Scheduling is under developing as a 
+	    Summer Research Project at University of Nottingham.\n\n
+	    Supervisors\n
+	    Ruibin Bai\n
+	    Shi Cheng\n\n
+	    Android Programming:\n
+	    Jiaqi LI\n\n
+	    Server Programming:\n
+	    Jianjun Chen - Algorithms\n
+	    Yao Zhang - GUI\n
+	    Haoyue Zhu - Database\n
+	    Jiaqi Li - Communication\n\n
+	</string>
+	<string name="hostAddr">Server Address</string>
+	<string name="portNum">Port Number</string>
+	<string name="loginAddr">Login Address</string>
+	<string name="updateAddr">Update Address</string>
+	<string name="timeout">Timeout in Second</string>
+	<string name="updateInterval">Update Interval in Second</string>
+	<string name="language">Language</string>
+	<string name="resetAll">Reset All</string>
+	<string name="msgEmptyTable">User name, password and vehicle ID must be filled in.</string>
+	<string name="msgNetworkFailure">Error: network failure</string>
+	<string name="msgCanceled">Canceled</string>
+	<string name="msgLoginFailure">Error: username and password mismatch or vehicle not valid.</string>
+	<string name="msgMapNotReady">AMap: Map is not ready.</string>
+	<string name="msgSetFailure">Error: Failed to write settings.</string>
+	<string name="menuSetUpdateTitle">Update settings</string>
+	<string name="menuSetUpdateContent">Please enter new value:</string>
+	<string name="menuResetTitle">Rset ALL</string>
+	<string name="menuConfirm">Are you sure?</string>
+	<string name="menuActions">Actions</string>
+	<string name="menuActionStart">Start</string>
+	<string name="menuActionFinsih">Finish</string>
+	<string name="menuGotoMap">Go to Map</string>
+	<string name="menuExitTitle">Exit</string>
+	<string name="dialogProc">Processing</string>
+	<string name="dialogLogin">Loging in.. </string>
+	<string name="dialogUpdate">Updating..</string>
+	<string name="ok">OK</string>
+	<string name="yes">YES</string>
+	<string name="no">NO</string>
+	<string name="cancel">Cancel</string>
+	<string name="refresh">Refresh</string>
+	<string name="loginRequired">Login required.</string>
+</resources>

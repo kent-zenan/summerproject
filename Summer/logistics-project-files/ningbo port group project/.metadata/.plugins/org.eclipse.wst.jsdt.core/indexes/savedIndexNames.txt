@@ -1,0 +1,7 @@
+INDEX VERSION 1.3+C:\Users\kitfox\Desktop\ningbo port group project\.metadata\.plugins\org.eclipse.wst.jsdt.core\indexes
+3125777793.index
+2014810353.index
+3795452054.index
+3196765128.index
+2260773276.index
+3905253991.index

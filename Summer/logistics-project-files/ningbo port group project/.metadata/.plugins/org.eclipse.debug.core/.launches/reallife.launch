@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<launchConfiguration type="org.eclipse.jdt.launching.localJavaApplication">
+<listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_PATHS">
+<listEntry value="/NBPSimplServ/src/uk/ac/nottingham/ningboport/planner/RoutingPlanner.java"/>
+</listAttribute>
+<listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_TYPES">
+<listEntry value="1"/>
+</listAttribute>
+<booleanAttribute key="org.eclipse.jdt.launching.ATTR_USE_START_ON_FIRST_THREAD" value="true"/>
+<stringAttribute key="org.eclipse.jdt.launching.MAIN_TYPE" value="uk.ac.nottingham.ningboport.planner.RoutingPlanner"/>
+<stringAttribute key="org.eclipse.jdt.launching.PROGRAM_ARGUMENTS" value="-n network -sol realLifeData -s 20121128080000 -ebsCDT 12 -np 88 -maximumRunTime 60 -maximumShakeTime 15 -shakeBase 5 -tabuEnabled false -firstImprove true"/>
+<stringAttribute key="org.eclipse.jdt.launching.PROJECT_ATTR" value="NBPSimplServ"/>
+</launchConfiguration>

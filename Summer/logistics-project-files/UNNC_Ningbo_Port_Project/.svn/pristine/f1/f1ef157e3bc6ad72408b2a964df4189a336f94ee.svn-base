@@ -1,0 +1,852 @@
+package uk.ac.nottingham.ningboport.planner.algorithms;
+
+import java.util.Calendar;
+import java.util.Iterator;
+import java.util.Queue;
+import java.util.Random;
+import java.util.Vector;
+import java.util.concurrent.ArrayBlockingQueue;
+
+import uk.ac.nottingham.ningboport.planner.Network;
+import uk.ac.nottingham.ningboport.planner.Route;
+import uk.ac.nottingham.ningboport.planner.RoutingPlanner;
+import uk.ac.nottingham.ningboport.planner.Solution;
+import uk.ac.nottingham.ningboport.planner.Task;
+
+public class VNS extends NFunc{
+	public static int maximumShakeTime = 17;
+	public static int maximumRunTime = 120;
+	public static boolean tabuEnabled = false;
+	public static int shakeBase = 5;
+	public static boolean firstImprove = true;
+
+	private Network nw;
+	private Solution bestSolution;
+	private  int tabuLength = 7;
+	private Queue<Task> tabuList = new ArrayBlockingQueue<Task>(tabuLength);
+
+	private Vector<Route> currentShift;
+	private int currentShiftIndex;
+
+	private int twoOpt = 0, move = 0, cross = 0, swap = 0;
+
+	private int shakeI;
+
+	public VNS(Network nw) {
+		super(nw);
+		this.nw = nw;
+		//this.best = null;
+	}
+
+	private boolean isTabu(Task o) {
+		if (!tabuEnabled)
+			return false;
+
+		Iterator<Task> it = tabuList.iterator();
+		while (it.hasNext()) {
+			if (it.next().cmdt.id.equals(o.cmdt.id))
+				return true;
+		}
+
+		return false;
+
+	}
+
+	private void addToTabu(Task o) {
+		if (tabuLength == 0 || !tabuEnabled)
+			return;
+
+		if (isTabu(o))
+			return;
+
+		if (tabuList.size() == tabuLength)
+			tabuList.remove();
+
+		tabuList.offer(o);
+	}
+
+	/*
+	 * Maximum seconds is not enabled
+	 * 
+	 */
+	public void run(int startShift, int endShift) {
+		System.out.println("=== TS Started ===");
+		saveBetterSolution(null, null, null);
+		RoutingPlanner.addToOutput("sec:" + maximumRunTime + " mshaketime: " + maximumShakeTime + " shakebase: " + shakeBase + " ");
+		RoutingPlanner.addToOutput(" tabu: " + tabuEnabled + " firstImprove: " + firstImprove + "\n"); 
+		Calendar eTime = Calendar.getInstance(); 
+		int numberOfShifts = nw.getNumberOfShifts();
+		for (int i = startShift; i <= endShift && i < numberOfShifts; i++) {
+			currentShiftIndex = i;
+			currentShift = nw.routesOfShifts.elementAt(i);
+			//Stopping Criteria
+			eTime.add(Calendar.SECOND, maximumRunTime);
+			int shakeTime = shakeBase;
+
+			//Task set preparation
+			Vector<Task> mandatory = nw.getShiftTasks(currentShiftIndex, true);
+			Vector<Task> mandatory2 = new Vector<Task>();
+			if (i != nw.routesOfShifts.size() - 1) {
+				mandatory2 = nw.getShiftTasks(currentShiftIndex + 1, true);
+			}
+			Vector<Task> optional = nw.getShiftTasks(currentShiftIndex, false);
+
+			if (mandatory.isEmpty() && mandatory2.isEmpty() && optional.isEmpty() 
+					&& nw.getShiftRoutedTaskCount(currentShiftIndex, false, true) == 0) {
+				//System.out.println("skipped");
+				continue;
+			}
+			
+			System.out.printf("shift: %d\t", currentShiftIndex);
+			
+			//optimization
+			int k = 0, shakeBonus = 0;
+			while (Calendar.getInstance().before(eTime) && shakeBase + shakeBonus <= maximumShakeTime) {
+				switch(k) {	
+				case 0:
+					if (Double.compare(swap(true, firstImprove), 0) <= 0) {
+						k++;
+					} else {
+						k = 0;
+						swap++;
+					}
+					
+					break;
+					
+				case 1:
+					if (Double.compare(move(true, firstImprove), 0) <= 0) {
+						k++;
+					} else {
+						k = 0;
+						move++;
+					}
+					
+					break;
+					
+				case 2:
+					if (!insertFromUnassigned(mandatory, firstImprove)) {
+						k++;
+					} else {
+						k = 0;
+						
+					}
+					
+					break;
+					
+				case 3:
+					if (!insertFromUnassigned(mandatory2, firstImprove)) {
+						k++;
+					} else {
+						k = 0;
+					}
+					
+					break;
+					
+				case 4:
+					if (!insertFromUnassigned(optional, firstImprove)) {
+						k++;
+					} else
+						k = 0;
+
+					break;
+					
+				case 5:
+					if (Double.compare(twoOpt(true, firstImprove), 0) <= 0) {
+						k++;
+					} else {
+						twoOpt++;
+						k = 0;
+					}
+					
+					break;
+
+				case 6:
+					if (Double.compare(crossExchange(true, firstImprove), 0) <= 0) {
+						k++;
+					} else {
+						k = 0;
+						cross++;
+					}
+					
+					break;
+
+					//				case 7: //TODO: there is bug: the swapped tasks is not necessary a mandatory.
+					//					if (Double.compare(swapWithUnassigned(mandatory, true), 0) <= 0) {
+					//						k++;
+					//					} else
+					//						k = 0;
+					//					
+					//					break;
+
+				default:
+					//System.out.println("before save::" +nw.getCommodityCount() + "---" + taskCount(mandatory, mandatory2, optional));
+					if (saveBetterSolution(mandatory, mandatory2, optional)) {
+						shakeI = 0;
+						shakeBonus = 0;
+
+					} else {
+						if (maximumShakeTime != shakeBase) {
+							shakeBonus++;
+						}
+
+						shakeI++;
+						if (shakeI > 2) {
+							//this.optimizeRouteInPeriod(currentShiftIndex);
+							shakeI = 0;
+						}
+						tabuLength++;
+					}
+
+					shakeTime = shakeBase + shakeBonus;
+					for (int j = 0; j < shakeTime; j++) {
+						shake(mandatory, mandatory2, optional);
+					}
+
+					k = 0;
+				}
+			}
+
+			bestSolution.restore();
+			//this.optimizeRouteInPeriod(currentShiftIndex);
+			mandatory = nw.getShiftTasks(currentShiftIndex, true);
+			System.out.print("m: " + mandatory.size());
+			System.out.println(" OV: " + nw.getShiftObjectiveValues(i));
+			nw.returnTasks(mandatory);
+
+		}
+		bestSolution.restore();
+		//this.optimizeAllRoutes();
+
+		RoutingPlanner.addToOutput("finish time: " + Calendar.getInstance().getTime() + "\n");
+		RoutingPlanner.addToOutput("twoOpt" + twoOpt + " move " + move + " cross " + cross + " swap " + swap);
+		
+		System.out.println("=== TS finished ===");
+	}
+
+	public int taskCount(Vector<Task> mandatory, 
+			Vector<Task> mandatory2, Vector<Task> optional) {
+		Vector<Task> n = new Vector<Task>();
+		n.addAll(mandatory);
+		n.addAll(mandatory2);
+		n.addAll(optional);
+		int count = 0;
+		for (int i = 0; i < n.size(); i++) {
+			if (n.get(i).gT == null) {
+				count++;
+			}
+			else
+			{
+				count += 2;
+			}
+		}
+
+		return count;
+	}
+
+
+	private boolean saveBetterSolution(Vector<Task> m1, 
+			Vector<Task> m2, Vector<Task> o) {
+		Vector<Task> otherTasks = new Vector<Task>();
+		if (m1 != null) otherTasks.addAll(m1);
+		if (m2 != null) otherTasks.addAll(m2);
+		if (o != null) otherTasks.addAll(o);
+
+		Solution currentSolution = new Solution(nw, otherTasks); 
+		if (bestSolution == null) {
+			bestSolution = currentSolution;
+			//System.out.print(shakeI);
+		} else {
+			if (currentSolution.betterThan(bestSolution)) {
+				System.out.print(shakeI);
+				bestSolution = currentSolution;
+			} else {
+				System.out.print(".");
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	/* Swapping neighbourhood.
+	 * returns whether the solution is improved or not.
+	 * the value is the deadheading time reduced.
+	 * 
+	 * loops through all TAs in routes, try swap with/insert into
+	 * other routes.
+	 */
+	private double swap(boolean descend, boolean firstImprove) {
+		Vector<Route> routes = new Vector<Route>();
+		int si = currentShiftIndex > 0 ? currentShiftIndex:0;
+		int numberOfShifts = nw.getNumberOfShifts();
+		for (; si < currentShiftIndex + 3 && si < numberOfShifts; si++) {
+			routes.addAll(nw.routesOfShifts.get(si));
+		}
+
+		int numberOfRoutes = routes.size();
+		Vector<Route> r1 = new Vector<Route>(),
+				r2 = new Vector<Route>();
+		Vector<Integer> index1 = new Vector<Integer>(),
+				index2 = new Vector<Integer>();
+		double bestEdReduce = 0;
+
+		for (int i = 0; i < numberOfRoutes; i++) { // route i
+			Route routeI = routes.get(i);
+			if (routeI.actualEndTime != null) continue;
+			int routeILength = routeI.taskSet.size();
+			nw.check(routeI);
+			double cr_ed = routeI.emptyDistance + routeI.softTimeWindowPenalty;
+
+			for (int j = 0; j < routeILength; j++) { // task j in route i
+				if (routeI.taskSet.get(j).freezed())
+					continue;
+
+				if (isTabu(routeI.taskSet.get(j)))
+					continue;
+				
+				for (int k = i; k < numberOfRoutes; k++) { // route k
+					Route routeK = routes.get(k);
+					if (routeK.actualEndTime != null) continue;
+					int routeJLength = routeK.taskSet.size();
+					nw.check(routeK);
+					double sr_ed = routeK.emptyDistance + routeK.softTimeWindowPenalty;
+
+					int l;
+					if (k == i)
+						l = j+1;
+					else
+						l = 0;
+
+					for (; l < routeJLength; l++) { // task l in route k
+						if (routeK.taskSet.get(l).freezed() || 
+								isTabu(routeK.taskSet.get(l)) ||
+								routeI.taskSet.get(j).cmdt.id.equals(routeK.taskSet.get(l).cmdt.id))
+							continue;
+
+						if (swapTask(routeI, j, routeK, l, false)) {
+							double edReduce = cr_ed - routeI.emptyDistance - routeI.softTimeWindowPenalty;
+							if (i != k)
+								edReduce += sr_ed - routeK.emptyDistance - routeK.softTimeWindowPenalty;
+
+							if (descend) {
+								if (Double.compare(edReduce, bestEdReduce) > 0) {
+									if (firstImprove) {
+										swapTask(routeI, j, routeK, l, true);
+										return edReduce;
+									}
+									bestEdReduce = edReduce;
+									r1.add(0, routeI);
+									r2.add(0, routeK);
+									index1.add(0, j);
+									index2.add(0, l);
+								}
+							} else {
+								if (Double.compare(edReduce, 0) != 0) {
+									r1.add(routeI);
+									r2.add(routeK);
+									index1.add(j);
+									index2.add(l);
+								}
+							}
+
+						}
+
+						// if the task
+						if (routeK.checkErrorIndex == l) {
+							break;
+						}
+					}
+				} // end of swapping test
+
+
+			}
+		} // end of finding all swaps.
+
+		if (descend) {
+			if (Double.compare(bestEdReduce, 0) > 0) {
+				addToTabu(r1.get(0).taskSet.get(index1.get(0)));
+				addToTabu(r2.get(0).taskSet.get(index2.get(0)));
+				swapTask(r1.get(0), index1.get(0), r2.get(0), index2.get(0), true);
+			}
+			return bestEdReduce;
+		} else {
+			if (r1.size() == 0) return -1;
+			Random rg = new Random();
+			int n = rg.nextInt(r1.size());
+			addToTabu(r1.get(n).taskSet.get(index1.get(n)));
+			addToTabu(r2.get(n).taskSet.get(index2.get(n)));
+			swapTask(r1.get(n), index1.get(n), r2.get(n), index2.get(n), true);
+			return 1;
+		}
+
+	}
+
+	//TODO: unassigned contains only one task for each commodity.
+	//	private double swapWithUnassigned(Vector<Task> unassigned, boolean descend) {
+	//		int uaSize = unassigned.size();
+	//		double shiftSize = currentShift.size();
+	//		
+	//		Vector<Route> r = new Vector<Route>();
+	//		Vector<Integer> index = new Vector<Integer>();
+	//		Vector<Integer> uaIndex = new Vector<Integer>();
+	//		
+	//		double BestEmptyRateDecrease = -99999999999999.0;
+	//		for (int k = 0; k < uaSize; k++) {
+	//			for (int i = 0; i < shiftSize; i++) {
+	//				Route routeI = currentShift.get(i);
+	//				int routeISize = routeI.taskSet.size();
+	//				routeI.check();
+	//				double emptyRateO = 
+	//						(routeI.emptyDistance + routeI.softTimeWindowPenalty) / routeI.loadedDistance;
+	//				for (int j = 0; j < routeISize; j++) { // slot size == cr_size.
+	//					Task taskJ = routeI.taskSet.get(j);
+	//					if (taskJ.freezed() || isTabu(taskJ) ||
+	//							taskJ.cmdt.id.equals(unassigned.get(k).cmdt.id))
+	//						continue;
+	//					
+	//					int swapResult = swapTask(routeI, j, unassigned, k, false);
+	//					if (swapResult > 0) {
+	//						double emptyRateDecrease =
+	//								emptyRateO - 
+	//								(routeI.emptyDistance + routeI.softTimeWindowPenalty) / routeI.loadedDistance;
+	//						if (Double.compare(emptyRateDecrease, BestEmptyRateDecrease) > 0) {
+	//							BestEmptyRateDecrease = emptyRateDecrease;
+	//						}
+	//						
+	//						r.add(0, routeI);
+	//						index.add(0, j);
+	//						uaIndex.add(0, k);
+	//						
+	//					} else if (swapResult == 0) {
+	//						break;
+	//					}
+	//				}
+	//			}
+	//		}
+	//		
+	//		if (r.size() == 0)
+	//			return -1;
+	//		
+	//		if (descend) {
+	//			if (Double.compare(BestEmptyRateDecrease, 0) > 0) {
+	//				addToTabu(unassigned.get(uaIndex.get(0)));
+	//				swapTask(r.get(0), index.get(0), unassigned, uaIndex.get(0), true);
+	//			}
+	//			System.out.println("Yahooooo!");
+	//			return BestEmptyRateDecrease;
+	//		} else {
+	//			Random rg = new Random();
+	//			int n = rg.nextInt(r.size());
+	//			swapTask(r.get(n), index.get(n), unassigned, uaIndex.get(n), true);
+	//			return 1;
+	//		}
+	//		
+	//	}
+
+	private double move(boolean descend_mode, boolean firstImprove) {
+		int r_size = currentShift.size();
+		Vector<Route> routes = new Vector<Route>();
+		int si = currentShiftIndex > 0 ? currentShiftIndex:0;
+		int numberOfShifts = nw.getNumberOfShifts();
+		for (; si < currentShiftIndex + 3 && si < numberOfShifts; si++) {
+			routes.addAll(nw.routesOfShifts.get(si));
+		}
+
+
+		Vector<Route> route1 = new Vector<Route>(),
+				route2 = new Vector<Route>();
+		Vector<Integer> index1 = new Vector<Integer>(),
+				index2 = new Vector<Integer>();
+		double bestEdReduce = 0;
+		for (int i = 0; i < r_size; i++) { // origin route
+			Route originRoute = routes.get(i);
+			if (originRoute.actualEndTime != null) continue;
+
+			int originRouteSize = originRoute.taskSet.size();
+			nw.check(originRoute);
+			double cr_ed = originRoute.emptyDistance + originRoute.softTimeWindowPenalty;
+			for (int j = 0; j < originRouteSize; j++) { // origin task
+				if (originRoute.taskSet.get(j).freezed() ||
+						isTabu(originRoute.taskSet.get(j)))
+					continue;
+
+				// Insertion test start
+				for (int k = 0; k < r_size; k++) { // target route
+					Route targetRoute = routes.get(k);
+					if (targetRoute.actualEndTime != null) continue;
+
+					int ir_size = targetRoute.taskSet.size();
+					nw.check(targetRoute);
+					double ir_ed = targetRoute.emptyDistance + targetRoute.softTimeWindowPenalty;
+
+					for (int l = 0; l <= ir_size; l++) { // target slot
+						if (l != ir_size && targetRoute.taskSet.get(l).freezed())
+							continue;
+
+						if (moveTask(originRoute, j, targetRoute, l, false)) {
+							double edReduce = cr_ed - originRoute.emptyDistance - originRoute.softTimeWindowPenalty;
+							if (i != k)
+								edReduce += ir_ed - targetRoute.emptyDistance - targetRoute.softTimeWindowPenalty;
+
+							if (descend_mode) {
+								if (Double.compare(edReduce, bestEdReduce) > 0) {
+									if (firstImprove) {
+										moveTask(originRoute, j, targetRoute, l, true);
+										return edReduce;
+									}
+									bestEdReduce = edReduce;
+									route1.add(0, originRoute);
+									route2.add(0, targetRoute);
+									index1.add(0, j);
+									index2.add(0, l);
+								}
+							} else {
+								if (Double.compare(edReduce, 0) != 0) {
+									route1.add(originRoute);
+									route2.add(targetRoute);
+									index1.add(j);
+									index2.add(l);
+								}
+							}
+
+						}
+
+						if (targetRoute.checkErrorIndex == l 
+								|| targetRoute.checkErrorIndex == -1) {
+							break;
+						}
+					} // Slot finding loop
+				} // Route finding loop
+
+
+			}
+		} // end of finding all inserts.
+
+		if (descend_mode) {
+			if (Double.compare(bestEdReduce, 0) > 0) {
+				addToTabu(route1.get(0).taskSet.elementAt(index1.get(0)));
+				moveTask(route1.get(0), index1.get(0), route2.get(0), index2.get(0), true);
+			}
+			return bestEdReduce;
+
+		} else {
+			if (route1.size() == 0) return -1;
+			Random rg = new Random();
+			int n = rg.nextInt(route1.size());
+			//System.out.println("Shaking: " + n + " of " + route2.size());
+
+			addToTabu(route1.get(n).taskSet.get(index1.get(n)));
+			moveTask(route1.get(n), index1.get(n), route2.get(n), index2.get(n), true);
+			return 1;
+		}
+
+	}
+
+	/* It inserts unassigned ta from a ta vector.
+	 * Return:
+	 * whether one task is inserted
+	 */
+	private boolean insertFromUnassigned(Vector<Task> unassigned, boolean firstImprove) {
+		int ta_size = unassigned.size();
+		double rsize = currentShift.size();
+
+		Vector<Route> r = new Vector<Route>();
+		Vector<Integer> slot = new Vector<Integer>();
+		Vector<Task> ta = new Vector<Task>();
+
+		double BestEmptyRateDecrease = -99999999999999.0;
+		for (int k = 0; k < ta_size; k++) { // unassigned task set
+			Task t = unassigned.get(k);
+			if (isTabu(t))
+				continue;
+
+			for (int i = 0; i < rsize; i++) { // route
+				Route routeI = currentShift.get(i);
+				if (routeI.actualEndTime != null) continue;
+				
+				int routeISize = routeI.taskSet.size();
+				nw.check(routeI);
+				double emptyRateO = 
+						(routeI.emptyDistance + routeI.softTimeWindowPenalty) / routeI.loadedDistance;
+				for (int j = 0; j <= routeISize; j++) { // slot size == cr_size.
+					if (j != routeISize && routeI.taskSet.get(j).freezed())
+						continue;
+					routeI.insert(k, j, unassigned);
+					//croute.check() ==1 0
+					if (nw.check(routeI, true, true) > 0) {
+						double emptyRateDecrease =
+								emptyRateO - 
+								(routeI.emptyDistance + routeI.softTimeWindowPenalty) / routeI.loadedDistance;
+						if (Double.compare(emptyRateDecrease, BestEmptyRateDecrease) > 0) {
+							if (firstImprove) {
+								return true;
+							}
+							BestEmptyRateDecrease = emptyRateDecrease;
+
+						}
+
+						r.add(0, routeI);
+						slot.add(0, j);
+						ta.add(0, t);
+					}
+					routeI.remove(j, unassigned);
+
+					if (routeI.checkErrorIndex == j || routeI.checkErrorIndex == -1)
+						break;
+				}
+			}
+		}
+
+		if (r.size() == 0)
+			return false;
+
+		addToTabu(ta.get(0));
+		r.get(0).insert(unassigned.indexOf(ta.get(0)), slot.get(0), unassigned);
+		return true;
+
+		//System.out.println("Returned: " + BestEmptyRateDecrease);
+
+	}
+
+	private double twoOpt(boolean descend, boolean firstImprove) {
+		Vector<Route> routes = new Vector<Route>();
+		routes.addAll(currentShift);
+		if (this.currentShiftIndex > 0)
+			routes.addAll(nw.routesOfShifts.get(currentShiftIndex - 1));
+
+		int numberOfShifts = nw.getNumberOfShifts();
+		if (currentShiftIndex < numberOfShifts - 1)
+			routes.addAll(nw.routesOfShifts.get(currentShiftIndex + 1));
+
+		// ------- best results here
+		double bestEdReduce = 0;
+		Vector<Route> r1v = new Vector<Route>(),
+				r2v = new Vector<Route>();
+		Vector<Integer> slot1 = new Vector<Integer>(),
+				slot2 = new Vector<Integer>();
+
+		// ------- loop
+		int numberOfRoutes = routes.size();
+		for (int i = 0; i < numberOfRoutes; i++) { // route 1
+			Route r1 = routes.get(i);
+			if (r1.actualEndTime != null) continue;
+			
+			int r1Size = r1.taskSet.size();
+			if (r1Size < 4) continue;
+			nw.check(r1);
+			double ed1 = r1.emptyDistance + r1.softTimeWindowPenalty;
+
+			for (int j = i + 1; j < numberOfRoutes; j++) { // route 2
+				Route r2 = routes.get(j);
+				if (r2.actualEndTime != null) continue;
+				
+				int r2Size = r2.taskSet.size();
+				if (r2Size < 4) continue;
+				nw.check(r2);
+				double ed2 = r2.emptyDistance + r2.softTimeWindowPenalty;
+				// Loop through slots: (k = 0) => slot after 0th ta. 
+				for (int k = 2; k < r1Size - 2; k++) { // slot 1
+					if (r1.taskSet.get(k + 1).freezed() || isTabu(r1.taskSet.get(k)))
+						continue;
+					for (int l = 2; l < r2Size - 2; l++) { // slot 2
+						if (r2.taskSet.get(l + 1).freezed() || isTabu(r2.taskSet.get(l)))
+							continue;
+						if (twoOpt(r1, k, r2, l, false)) {
+							double edReduce = ed1 + ed2 - 
+									(r1.emptyDistance + r1.softTimeWindowPenalty 
+											+ r2.emptyDistance + r2.softTimeWindowPenalty);
+							if (descend) {
+								if (Double.compare(edReduce, bestEdReduce) > 0) {
+									if (firstImprove) {
+										twoOpt(r1, k, r2, l, true);
+										return edReduce;
+									}
+									r1v.add(0, r1);
+									r2v.add(0, r2);
+									slot1.add(0, k);
+									slot2.add(0, l);
+									bestEdReduce = edReduce;
+								}
+
+							} else {
+								if (Double.compare(edReduce, 0) != 0) {
+									r1v.add(r1);
+									r2v.add(r2);
+									slot1.add(new Integer(k));
+									slot2.add(new Integer(l));
+								}
+							}
+						}
+					} // slot 2
+				} // slot1
+			}// r2
+		}// r1
+
+
+		if (descend) {
+			if (Double.compare(bestEdReduce, 0) > 0) {
+				twoOpt(r1v.get(0), slot1.get(0), r2v.get(0), slot2.get(0), true);
+			}
+			return bestEdReduce;
+		} else {
+			if (r1v.size() == 0) return 0;
+			Random rg = new Random();
+			int n = rg.nextInt(r1v.size());
+			twoOpt(r1v.get(n), slot1.get(n), r2v.get(n), slot2.get(n), true);
+			return 1;
+		}
+
+	}
+
+	public double crossExchange(boolean descend, boolean firstImprove)
+	{
+		Vector<Route> routes = new Vector<Route>();
+		routes.addAll(currentShift);
+		if (this.currentShiftIndex > 0)
+			routes.addAll(nw.routesOfShifts.get(currentShiftIndex - 1));
+
+		int numberOfShifts = nw.getNumberOfShifts();
+		if (currentShiftIndex < numberOfShifts - 1)
+			routes.addAll(nw.routesOfShifts.get(currentShiftIndex + 1));
+
+		// ------- best results here
+		double bestEdReduce = 0;
+		Vector<Route> r1v = new Vector<Route>(),
+				r2v = new Vector<Route>();
+		Vector<Integer> from1v = new Vector<Integer>(), length1v = new Vector<Integer>(),
+				from2v = new Vector<Integer>(), length2v = new Vector<Integer>();
+
+		// ------- loop
+		int routesSize = routes.size();
+		for (int i = 0; i < routesSize; i++) {
+			Route r1 = routes.get(i);
+			if (r1.actualEndTime != null) continue;
+			
+			int r1Size = r1.taskSet.size();
+			if (r1Size < 3) continue;
+			nw.check(r1);
+			double ed1 = r1.emptyDistance + r1.softTimeWindowPenalty;
+
+			for (int j = i + 1; j < routesSize; j++) {
+				Route r2 = routes.get(j);
+				if (r2.actualEndTime != null) continue;
+				
+				int r2Size = r2.taskSet.size();
+				if (r2Size < 3) continue;
+				nw.check(r2);
+				double ed2 = r2.emptyDistance + r2.softTimeWindowPenalty;
+
+				for (int from1 = 0; from1 + 2 <= r1Size; from1++) {
+					Task start1 = r1.taskSet.get(from1);
+					if (isTabu(start1) || start1.freezed())
+						continue;
+					
+					for (int length1 = 2; length1 < 4 && from1 + length1 <= r1Size; length1++) {
+						for (int from2 = 0; from2 + 2 <= r2Size; from2++) {
+							Task start2 = r2.taskSet.get(from2);
+							if (isTabu(start2) || start2.freezed())
+								continue;
+							
+							for(int length2 = 2; length2 < 4 && from2 + length2 <= r2Size; length2++) {
+								if (cross(r1, from1, length1, r2, from2, length2, false)) {
+									double edReduce = ed1 + ed2 - 
+											(r1.emptyDistance + r1.softTimeWindowPenalty 
+													+ r2.emptyDistance + r2.softTimeWindowPenalty);
+									if (descend) {
+										if (Double.compare(edReduce, bestEdReduce) > 0) {
+											if (firstImprove) {
+												cross(r1, from1, length1, r2, from2, length2, true);
+												return edReduce;
+											}
+											r1v.add(0, r1);
+											r2v.add(0, r2);
+											from1v.add(0, from1);
+											from2v.add(0, from2);
+											length1v.add(0, length1);
+											length2v.add(0, length2);
+											bestEdReduce = edReduce;
+										}
+
+									} else {
+										if (Double.compare(edReduce, 0) != 0) {
+											r1v.add(r1);
+											r2v.add(r2);
+											from1v.add(from1);
+											from2v.add(from2);
+											length1v.add(length1);
+											length2v.add(length2);
+										}
+									}
+								}
+							} //length2
+						} // from2
+					} // length1
+				}//from1
+
+			}
+		}
+
+		if (descend) {
+			if (Double.compare(bestEdReduce, 0) > 0) {
+				// cross that
+				cross(r1v.get(0), from1v.get(0), length1v.get(0), r2v.get(0), from2v.get(0), length2v.get(0), true);
+			}
+			return bestEdReduce;
+
+		} else {
+			if (r1v.size() == 0) return 0;
+			Random rg = new Random();
+			int n = rg.nextInt(r1v.size());
+			cross(r1v.get(n), from1v.get(n), length1v.get(n), r2v.get(n), from2v.get(n), length2v.get(n), true);
+			return 1;
+		}
+
+
+	}
+
+
+	/*
+	 * Randomly optimize a segment of a route in each route
+	 */
+	//	private void randomSegmentOpt(int segmentLen) {
+	//		int numberOfRoutes = currentShift.size();
+	//		for (int i = 0; i < numberOfRoutes; i++) {
+	//			Route r = currentShift.get(i);
+	//			int rsize = r.taskSet.size();
+	//			int start = 0, end = rsize - 1;
+	//			if (rsize > segmentLen) { 
+	//				Random rg = new Random();
+	//				start = rg.nextInt(rsize - segmentLen + 1);
+	//				end = start + segmentLen - 1;
+	//			}
+	//			
+	//			//System.out.println("start: " + start + " end: " + end);
+	//			optimizePartialRoute(r, start, end);
+	//		}
+	//	}
+
+	/*
+	 * ifuM ifuM2 ifuO move swap rmvOpt cross => ?
+	 * cross ifuM swap move => ?
+	 */
+	private boolean shake
+	(Vector<Task> mandatory, Vector<Task> mandatory2, Vector<Task> optional) {
+		switch(shakeI) {
+		case 0:
+			if (move(false, false) > 0) return true;
+			break;
+		case 1:
+			if (swap(false, false) > 0) return true;
+			break;
+		case 2:
+			if (Double.compare(crossExchange(false, false), 0) > 0) return true;
+			break;
+
+		default:
+			System.out.println("Invalid shakeI");
+			break;
+		}
+
+		return false;
+	}
+}

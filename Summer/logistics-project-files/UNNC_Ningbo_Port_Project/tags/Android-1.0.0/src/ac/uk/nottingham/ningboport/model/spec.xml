@@ -1,0 +1,123 @@
+<!-- 
+This is the format specification of communcation protocol 
+of scheduling software for Ningbo Port.
+© 2013 The University of Nottingham.
+Written by Jiaqi LI.
+
+0. General format
+* All communications between server and mobile terminals are encapsulated in XML.
+* Each valid XML file starts and ends with a !nbp! tag.
+* Each valid XML file must contain a session section, even it's not available.
+* Example:
+-->
+<nbp>
+	<session>
+		<driverName></driverName>
+		<startDate></startDate>
+		<expireDate></expireDate>
+		<vehicleID></vechicleID>
+	</session>
+	...
+</nbp>
+<!--
+1. Login format
+1.1 Terminal send a request to server.
+-->
+<nbp>
+	<session>
+		<driverName></driverName> <!--leave blank-->
+		<startDate></startDate> <!--leave blank-->
+		<expireDate></expireDate> <!--leave blank-->
+		<vehicleID></vechicleID> <!--leave blank-->
+	</session>
+	<login>
+		<username>Alex</username>
+		<password>Password</password>
+		<vehicleID>123456789</vehicleID>
+	</login>
+</nbp>
+<!--
+1.2 Server response with a valid session if login succeed, 
+a blank session otherwise. 
+-->
+<nbp>
+	<session>
+		<driverName>Alex</driverName>
+		<startDate>2013-07-11 12:59:00</startDate> 
+		<expireDate>2013-07-11 20:59:00</expireDate> 
+		<vehicleID>123456789</vechicleID> 
+	</session>
+	<login>
+		<username>Alex</username>
+		<password>Password</password>
+		<vehicleID>123456789</vehicleID>
+	</login>
+</nbp>
+
+
+<!--
+2. 30sec auto-update or on-demand update
+2.1 Terminal send a request to server.
+-->
+<nbp>
+	<session>
+		<driverName>Alex</driverName>
+		<startDate>2013-07-11 12:59:00</startDate> 
+		<expireDate>2013-07-11 20:59:00</expireDate> 
+		<vehicleID>123456789</vechicleID> 
+	</session>
+	<gps>
+		<longitude>120.21521452</longitude>
+		<latitude>45.21521452</latitude>
+	</gps>
+	<!-- Optional -->
+	<task>
+		<sequenceID></sequenceID>
+		<!-- action includes: start, finish-->
+		<action></action>
+	</task>
+</nbp>
+<!--
+2.2 Server response with updated task info.
+NOTICE: The server is responsible to tell the terminal how to update it's
+task info to latest version.
+-->
+<nbp>
+	<!-- Mandatory-->
+	<session>
+		<driverName>Alex</driverName>
+		<startDate>2013-07-11 12:59:00</startDate> 
+		<expireDate>2013-07-11 20:59:00</expireDate> 
+		<vehicleID>123456789</vechicleID> 
+	</session>
+	<!-- Optional-->
+	<task>
+		<!-- Required -->
+		<sequenceID></sequenceID>
+		<!-- action includes: update, add, delete-->
+		<action></action>
+		<!-- Optional-->
+		<!-- for delete action, the following tags will not be checked-->
+		<!-- for update action, existing tags will be replaced by following tags-->
+		<!-- for add action, the following tags will be used to form a tasj-->
+		<declarID></declarID>
+		<src></src>.
+		<dest></dest>
+		<availableT></availableT>
+		<deadline></deadline>
+		<size></size>
+		<weight></weight>
+		<quantity></quantity>
+		<plannedStartTime></plannedStartTime>
+		<plannedLoadTime></plannedLoadTime>
+		<plannedTravelTime></plannedTravelTime>
+		<plannedUnloadTime></plannedUnloadTime>
+		<plannedFinishTime></plannedFinishTime>
+		<actualStartTime></actualStartTime>
+		<actualLoadTime></actualLoadTime>
+		<actualTravelTime></actualTravelTime>
+		<actualUnloadTime></actualUnloadTime>
+		<actualFinishTime></actualFinishTime>
+		<status></status>
+	</task>
+</nbp>

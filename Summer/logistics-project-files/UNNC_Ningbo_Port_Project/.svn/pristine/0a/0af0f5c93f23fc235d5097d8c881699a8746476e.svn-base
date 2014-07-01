@@ -1,0 +1,331 @@
+package uk.ac.nottingham.ningboport.planner;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Timestamp;
+import java.util.Calendar;
+import java.util.Vector;
+
+import uk.ac.nottingham.ningboport.network.model.XMLSession;
+
+public class Solution {
+	public int numberOfTasksCompleted = 0;
+	public double emptyDistance = 0;
+	public double loadedDistance = 0;
+	public Vector<Vector <Route>> routesOfShifts;
+	public Vector<Task> taskSet;
+	public Network nw;
+	private String routeOutput;
+	public Solution(Network nw, Vector<Task> unassignedTask) {
+		this.nw = nw;
+		routeOutput = nw.outputRoutes();
+		
+		taskSet = new Vector<Task>();
+		if (unassignedTask != null) {
+			unassignedTask.addAll(nw.taskSet);
+			int nwTaskSetSize = unassignedTask.size();
+			for (int i = 0; i < nwTaskSetSize; i++) {
+				taskSet.add(unassignedTask.get(i).clone());
+			}
+		}
+		
+		Vector<Vector <Route>> routesOfShifts = nw.routesOfShifts;
+		int numberOfShifts = routesOfShifts.size();
+		this.routesOfShifts = new Vector<Vector <Route>>(numberOfShifts);
+		for (int i = 0; i < numberOfShifts; i++) {
+			// create a new period for this solution
+			Vector<Route> solutionRoutesOfPeriodI = new Vector<Route>();
+			this.routesOfShifts.add(solutionRoutesOfPeriodI);
+			
+			Vector<Route> networkRoutesInShiftI = routesOfShifts.elementAt(i);
+			int numberOfRoutes = networkRoutesInShiftI.size();
+			for (int j = 0; j < numberOfRoutes; j++) {
+				Route current = networkRoutesInShiftI.elementAt(j);
+				nw.check(current);
+				emptyDistance += current.emptyDistance;
+				loadedDistance += current.loadedDistance;
+				numberOfTasksCompleted++;
+				solutionRoutesOfPeriodI.add(current.clone());
+			}
+		}
+	}
+	
+	public void restore() {
+		nw.taskSet.removeAllElements();
+		nw.routesOfShifts.removeAllElements();
+		
+		// restore task set
+		int taskSetSize = taskSet.size();
+		for (int i = 0; i < taskSetSize; i++) {
+			nw.taskSet.add(taskSet.get(i).clone());
+		}
+		
+		// restore routes
+		int shiftNumber = routesOfShifts.size();
+		for (int i = 0; i < shiftNumber; i++) {
+			Vector<Route> solShiftI = routesOfShifts.get(i);
+			Vector<Route> nwShiftI = new Vector<Route>();
+			nw.routesOfShifts.add(nwShiftI);
+			int shiftSize = solShiftI.size(); 
+			for (int j = 0; j < shiftSize; j++) {
+				Route solRouteJ = solShiftI.get(j);
+				nwShiftI.add(solRouteJ.clone());
+			}
+		}
+		
+		Route error = nw.checkAllRoutes();
+		if (error != null) {
+			System.out.println(routeOutput + "\n\n\n\n\n" + nw.outputRoutes());
+			
+		}
+	}
+	
+	public int compareTo(Solution b) {
+		return Double.compare(b.emptyDistance, this.emptyDistance);
+	}
+	
+	public boolean betterThan(Solution b) {
+		if (numberOfTasksCompleted > b.numberOfTasksCompleted) return true;
+		else if (numberOfTasksCompleted < b.numberOfTasksCompleted) return false;
+		
+		double empty_rate_a = this.emptyDistance / (this.loadedDistance + this.emptyDistance);
+		double empty_rate_b = b.emptyDistance / (b.loadedDistance + b.emptyDistance);
+		if (Double.compare(empty_rate_a, empty_rate_b) < 0)
+			return true;
+		else
+			return false;
+	}
+	
+	/*
+	 * Reads a solution from database, but the unfrozen task will not be read.
+	 * 
+	 */
+	public void readSolutionFromDatabase(String name, String password) {
+		Vector<Vector<Route>> routesOfShifts = new Vector<Vector<Route>>();
+		Vector<Timestamp> shiftStartTimes = new Vector<Timestamp>();
+//		int commodityCount = nw.commodities.size();
+//		for (int i = 0; i < commodityCount; i++) {
+//			nw.commodities.get(i).tasks = new Vector<Task>();
+//		}
+//		nw.taskSet.clear();
+		try {
+			Class.forName("com.mysql.jdbc.Driver");
+			Connection connect = DriverManager.getConnection("jdbc:mysql://localhost/nbp", name, password);
+			Statement s = connect.createStatement();			
+			ResultSet rs = s.executeQuery("SELECT Task.id as task_id, commodity_id, sequence_num, small, large, planned_start, planned_finish, actual_start, actual_finish, session_driverName, session_vehicleID, startTime as session_start, expireTime as session_expire, shift_normal_start_time, route_num, Route.id as route_id, Route.status as route_status, Task.status as task_status FROM Task inner join Route on Task.route_id=Route.id left join Session on Route.sessionID=Session.sessionID order by shift_normal_start_time, route_num, sequence_num;");
+
+			while (rs.next()) {	
+				//Shift
+				Timestamp ts = rs.getTimestamp("shift_normal_start_time");
+				Vector<Route> currentShift = null;
+				if (shiftStartTimes.size() != 0 && shiftStartTimes.lastElement().equals(ts)) {
+					currentShift = routesOfShifts.lastElement();
+				} else {
+					currentShift = new Vector<Route>();
+					routesOfShifts.add(currentShift);
+					shiftStartTimes.add(ts);
+				}
+				
+				
+				//session_driverName, session_vehicleID, startTime as session_start, expireTime as session_expire
+				XMLSession session = null;
+				String drivername = rs.getString("session_driverName");
+				if (drivername != null) {
+					session = new XMLSession(drivername, rs.getString("session_vehicleID"), Long.parseLong(rs.getString("session_start")), Long.parseLong(rs.getString("expireTime")));
+				}
+				//Route
+				int route_num = rs.getInt("route_num");
+				//System.out.println("Route num: " + route_num);
+				Route currentRoute = null;
+				while (currentShift.size() <= route_num) {
+					currentShift.add(new Route(nw, currentShift.size(), routesOfShifts.size() - 1));
+				}
+				//System.out.println("now currentshift size: " + currentShift.size());
+				currentRoute = currentShift.lastElement();
+				currentRoute.setSession(session);
+				
+				int route_id = rs.getInt("route_id");
+				currentRoute.id = route_id;
+				
+				currentRoute.currentStatus = Route.status.convertFromInt(rs.getInt("route_status"));
+				
+				//Task
+				Task t = new Task();
+				int task_status = rs.getInt("task_status");
+				if (Task.taskStatus.PLANNED == Task.taskStatus.convertFromInt(task_status)) {
+					continue;
+				}
+				
+				currentRoute.taskSet.add(t);
+				t.currentStatus = Task.taskStatus.convertFromInt(task_status);
+				
+				int task_id = rs.getInt("task_id");
+				t.taskID = task_id;
+				
+				Commodity c = nw.findCommodity(rs.getString("commodity_id"));
+				if (c == null) {
+					RoutingPlanner.errormsg("Commodity " + rs.getString("commodity_id") + " not found! skipping this task!");
+					continue;
+				}
+				t.cmdt = c;
+				//c.tasks.add(t);
+				
+				Timestamp ps = rs.getTimestamp("planned_start"), 
+						pf = rs.getTimestamp("planned_finish"),
+						as = rs.getTimestamp("actual_start"),
+						af = rs.getTimestamp("actual_finish");
+				t.startT = Calendar.getInstance();
+				t.startT.setTimeInMillis(ps.getTime());
+				t.finishT = Calendar.getInstance();
+				t.finishT.setTimeInMillis(pf.getTime());
+				if (as != null) {
+					t.actualStartT = Calendar.getInstance();
+					t.actualStartT.setTimeInMillis(as.getTime());
+				}
+				if (af != null) {
+					t.actualFinishT = Calendar.getInstance();
+					t.actualFinishT.setTimeInMillis(af.getTime());
+				}
+				
+				int small = rs.getInt("small"), large = rs.getInt("large");
+				if (large == 1) {
+					t.size = 2;
+				} else {
+					t.size = 1;
+					if (small == 2)
+						t.gT = t.clone();
+				}
+				
+				System.out.println("Task: " + t + "added");
+			}
+			
+			//shift start time/end time
+//			nw.periodStartTimes = new Calendar[shiftStartTimes.size()];
+//			for (int i = 0; i < shiftStartTimes.size(); i++) {
+//				Calendar cal = Calendar.getInstance();
+//				nw.periodStartTimes[i] = cal;
+//				cal.setTimeInMillis(shiftStartTimes.get(i).getTime());
+//				nw.periodEndTimes[i] = (Calendar) cal.clone();
+//				nw.periodEndTimes[i].add(Calendar.HOUR, nw.periodLength);
+//			}
+//			nw.classifyCommodities();
+			if (routesOfShifts.size() != 0) {
+				nw.routesOfShifts = routesOfShifts;
+			}
+		} catch (ClassNotFoundException e) {
+			e.printStackTrace();
+		} catch (SQLException e) {
+			e.printStackTrace();
+			
+		}
+		
+	}
+	
+	public void writeSolutionToDatabase(String name, String password) {
+		try {
+			Class.forName("com.mysql.jdbc.Driver");
+			Connection connect = DriverManager.getConnection("jdbc:mysql://localhost/nbp?&useUnicode=true&characterEncoding=UTF-8", name, password);
+			Statement s = connect.createStatement(ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE);
+			//s.execute("set character set utf8");
+			//s.execute("set names utf8");
+			//clean everything in the task and route table
+			s.executeUpdate("DELETE FROM Gps;");
+			s.executeUpdate("DELETE FROM Task;");
+			s.executeUpdate("DELETE FROM Route;");
+			s.executeUpdate("DELETE FROM Session;");
+			//Write routes
+			int numberOfShifts = routesOfShifts.size();
+			for (int i = 0; i < numberOfShifts; i++) {
+				Vector<Route> routesInShiftI = routesOfShifts.get(i);
+				int numberOfRoutesInI = routesInShiftI.size();
+				Timestamp shiftStartTime = new Timestamp(nw.shiftStartTimes[i].getTimeInMillis()); 
+				for (int j = 0; j < numberOfRoutesInI; j++) {
+					routesInShiftI.get(j).nw.check(routesInShiftI.get(j));
+					ResultSet rss =s.executeQuery("SELECT * FROM Session;");
+					XMLSession session = routesInShiftI.get(j).getSession();
+					int sessionID = -1;
+					if (session != null) {
+						rss.moveToInsertRow();
+						rss.updateString("session_driverName", session.getDriverName());
+						rss.updateString("session_vehicleID", session.getVehicleID());
+						rss.updateString("startTime", String.valueOf(session.getStartTime()));
+						rss.updateString("expireTime", String.valueOf(session.getExpireTime()));
+						rss.insertRow();
+						rss.last();
+						sessionID = rss.getInt("sessionID");
+					}
+					
+					
+					ResultSet rsr = s.executeQuery("SELECT * FROM Route;");
+					rsr.moveToInsertRow();
+					rsr.updateTimestamp("shift_normal_start_time", shiftStartTime);
+					rsr.updateInt("route_num", j);
+					rsr.updateInt("status", routesInShiftI.get(j).getStatus().getValue());
+					if (sessionID != -1) rsr.updateInt("sessionID", sessionID);
+					rsr.insertRow();
+					rsr.last();
+					
+					int routeID = rsr.getInt("id");
+					Vector<Task> tasksInRoutej = routesInShiftI.get(j).taskSet;
+					int routejSize = tasksInRoutej.size();
+					for (int k = 0; k < routejSize; k++) {			
+						Task t = tasksInRoutej.get(k);
+						ResultSet rst = s.executeQuery("SELECT * FROM Task;");
+						rst.moveToInsertRow();
+						rst.updateString("commodity_id", t.cmdt.id);
+						rst.updateInt("route_id", routeID);
+						rst.updateInt("sequence_num", k);
+						rst.updateInt("status", t.currentStatus.getValue());
+
+						if (t.size == 1) { // container
+							if (t.gT == null) {
+								rst.updateInt("small", 1);
+								rst.updateInt("large", 0);
+
+							} else {
+								rst.updateInt("small", 2);
+								rst.updateInt("large", 0);
+
+							}
+						} else {
+							rst.updateInt("small", 0);
+							rst.updateInt("large", 1);
+
+						}
+
+						rst.updateTimestamp("planned_start", new Timestamp(t.startT.getTimeInMillis()));
+						rst.updateTimestamp("planned_finish", new Timestamp(t.finishT.getTimeInMillis()));
+						
+						if (t.actualStartT != null) {
+							rst.updateTimestamp("actual_start", new Timestamp(t.actualStartT.getTimeInMillis()));
+							
+						} else {
+	
+						}
+						
+						if (t.actualFinishT != null) {
+							rst.updateTimestamp("actual_finish", new Timestamp(t.actualFinishT.getTimeInMillis()));
+							
+						} else {
+							
+						}
+	
+						rst.insertRow();
+						rst.moveToCurrentRow();
+						
+					} // task
+					
+				}// route
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+			
+		} catch (ClassNotFoundException e) {
+			e.printStackTrace();
+		}
+		
+	}
+}

@@ -1,0 +1,155 @@
+package uk.ac.nottingham.ningboport.planner;
+
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.Vector;
+
+import uk.ac.nottingham.ningboport.planner.algorithms.Insertion;
+import uk.ac.nottingham.ningboport.planner.algorithms.VNS;
+
+public class EventBasedSimulator {
+	private Vector<CommodityEvent> commodityEvents;
+	private Calendar currentTime;
+	private Network nw;
+	
+	//TODO: if it is simulated. we no longer need to specify number of shifts
+	EventBasedSimulator(Vector<CommodityEvent> events, Network nw) {
+		commodityEvents = events;
+		System.out.printf("There are %d events parsed from %d commodities\n",
+				events.size(), nw.commodities.size());
+		this.nw = nw;
+	}
+	
+	public void run() {
+		Collections.sort(commodityEvents);
+		currentTime = commodityEvents.firstElement().eventTime;
+		final int LONGEST_BOND = 5; 
+		
+		//Combine temporally close events.
+		//TODO: combine based on how busy the shift is? like total number of tasks.
+		//if emergency task appear, then do it immediately
+		for (int i = 0; i < commodityEvents.size(); i++) {
+			CommodityEvent eventI = commodityEvents.get(i);
+			
+			// Time window of bond = [firstEventTime, firstEventTime + 5 hours]
+			Calendar firstEventTime = eventI.eventTime;
+			Calendar maxbond = (Calendar) firstEventTime.clone();
+			maxbond.add(Calendar.HOUR, LONGEST_BOND);
+			
+			Calendar bond = (Calendar) eventI.eventTime.clone();
+			bond.add(Calendar.HOUR, 1);
+			for (int j = i + 1; j < commodityEvents.size(); j++) {
+				CommodityEvent eventJ = commodityEvents.get(j);
+				if (eventJ.eventTime.before(bond) && eventJ.eventTime.before(maxbond)) {
+					bond = (Calendar) eventJ.eventTime.clone();
+					bond.add(Calendar.HOUR, 1);
+					eventI.commodities.addAll(eventJ.commodities);
+					eventI.eventTime = eventJ.eventTime;
+					commodityEvents.remove(j--);
+				}
+			}
+		}
+		
+		// Start simulation.
+		int commodityEventSize = commodityEvents.size();
+		System.out.printf("After combining, there are %d events\n", commodityEventSize);
+		for (int i = 0; i < commodityEventSize; i++) {
+			//reveal commodities in event
+			CommodityEvent event = commodityEvents.get(i);
+			int commoditySize = event.commodities.size();
+			for (int j = 0; j < commoditySize; j++) {
+				event.commodities.get(j).revealed = true;
+			}
+			System.out.printf("%d\t%s\n", commoditySize, event.eventTime.getTime());
+			
+			// set current time and make all tasks
+			// before/in current time finished/finishing
+			currentTime = event.eventTime;
+			int startingShift = setFinishedTask(currentTime);
+			removeUnfinishedTask();
+			// run the algorithm
+			if (startingShift < 0) {
+				continue;
+			}
+			Insertion ins = new Insertion(nw, false, false);
+			ins.run(startingShift, nw.getNumberOfShifts() - 1);
+			//TODO: test if T12120620 is completed after vns
+//			VNS ts = new VNS(nw);
+//			ts.run();
+			
+			//TODO: create a method to find out what mandatory commodity is left unfinished
+			// only revealed commodity counts.
+		}
+	}
+	
+	/*
+	 * sets the finished tasks according to currentTime.
+	 * returns which shift currentTime belongs to.
+	 * This set the actual finish time for routes (before current ctime's shift) as well.
+	 * 
+	 */
+	private int setFinishedTask(Calendar ctime) {
+		if (!nw.checkAllRoutes()) {
+			RoutingPlanner.errormsg("Error setting finished ta: not all routes currect!");
+			System.exit(0);
+		}
+		
+		int numberOfShifts = nw.getNumberOfShifts();
+		
+		int ctimeShiftI = -1;
+		for (int i = 0; i < numberOfShifts && ctimeShiftI == -1; i++) {
+			if (ctime.after(nw.shiftStartTimes[i]) && ctime.before(nw.shiftEndTimes[i]))
+				ctimeShiftI = i;
+			
+			int nroutes = nw.routesOfShifts.get(i).size();
+			for (int j = 0; j < nroutes; j++) {
+				Route routeJ = nw.routesOfShifts.get(i).get(j);
+				nw.check(routeJ);
+				Vector<Task> taskSet = routeJ.taskSet;
+				int tsSize = taskSet.size();
+				for (int k = 0; k < tsSize; k++) {
+					Task t = taskSet.get(k);
+					if (t.actualFinishT != null)
+						continue;
+						
+					if (ctime.after(t.startT)) {
+						t.actualStartT = (Calendar) t.startT.clone();
+						if (ctime.after(t.finishT)) {
+							t.actualFinishT = (Calendar) t.finishT.clone();
+						}
+					}
+
+				}// task set loop
+				
+				if (ctimeShiftI != -1) {
+					if (routeJ.actualEndTime == null)
+						routeJ.actualEndTime = routeJ.endTime;
+				
+					if (routeJ.actualStartTime == null) {
+						routeJ.actualStartTime = routeJ.startTime;
+					}
+				}
+			} // for each route
+			
+		}
+		
+		return ctimeShiftI;
+	}
+	
+	private void removeUnfinishedTask() {
+		for (int shiftI = 0; shiftI < nw.getNumberOfShifts(); shiftI++) {
+			Vector<Route> currentPeriod = nw.routesOfShifts.get(shiftI);
+			int rsize = currentPeriod.size();
+			for (int i = 0; i < rsize; i++) {
+				Vector<Task> taskSet = currentPeriod.elementAt(i).taskSet;
+				for (int j = 0; j < taskSet.size(); j++) {
+					Task t = taskSet.get(j);
+					if (!t.freezed()) {
+						nw.taskSet.add(taskSet.remove(j--));
+					}
+				}
+			}
+		}
+	} // end of removeUnfinishedTask
+	
+}

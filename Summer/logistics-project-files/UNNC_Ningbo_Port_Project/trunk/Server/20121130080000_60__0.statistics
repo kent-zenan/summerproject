@@ -1,0 +1,509 @@
+---: Task in :---
+2	0	8	1	8	26	18	9	5	5	0	5	28	25	14	3	12	16	0	24	25	6	1	2	0	6	15	21	20	13	2	1	14	6	0	0	4	5	8	19	21	21	11	21	4	5	2	0	0	0	0	8	15	2	12	8	1	5	0	7	
+17	35	5	25	27	7	14	8	12	6	4	7	4	4	5	10	15	8	16	11	1	0	1	3	10	23	15	9	2	2	4	10	11	9	9	3	0	13	13	4	1	1	9	9	10	2	18	3	9	5	2	0	3	23	14	19	30	9	23	22	
+14	0	4	6	0	0	3	1	0	3	11	2	0	0	10	0	8	0	0	0	1	24	21	22	3	1	0	1	1	15	9	3	0	0	5	3	1	6	0	0	0	1	4	0	0	18	7	13	3	4	10	16	6	7	5	1	0	0	1	0	
+2	0	15	0	0	2	0	1	3	10	2	1	0	0	3	1	0	11	0	0	2	1	0	5	2	0	0	1	0	0	1	2	4	0	16	18	5	6	1	4	0	2	0	0	21	6	4	6	8	3	4	6	4	0	2	1	1	0	0	1	
+0	0	0	3	0	0	0	13	3	1	8	12	0	0	3	0	0	0	19	0	3	0	2	3	20	5	5	0	7	5	0	5	0	6	0	1	18	4	12	6	11	10	11	5	0	0	4	0	0	0	10	5	5	2	2	4	3	21	9	5	
+0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+0	0	0	0	0	0	0	3	11	10	10	8	3	6	0	21	0	0	0	0	3	4	10	0	0	0	0	3	5	0	19	0	0	0	0	10	7	1	1	2	2	0	0	0	0	0	0	13	15	20	9	0	2	1	0	0	0	0	2	0	
+0	0	3	0	0	0	0	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	14	6	14	5	0	0	0	0	0	0	0	0	0	0	4	0	0	0	3	0	0	0	0	0	2	0	0	0	0	
+0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+
+
+---: Task out :---
+0	0	0	0	0	0	0	0	0	2	11	0	2	0	5	0	0	0	0	0	0	0	0	15	1	0	0	2	2	0	1	4	0	0	1	0	9	8	13	3	2	3	3	0	0	0	2	0	0	0	0	2	4	2	0	0	0	0	0	0	
+0	0	0	0	0	0	3	13	3	4	8	1	0	0	11	1	8	0	0	0	3	1	15	5	23	5	5	0	1	0	1	0	0	0	15	19	7	9	1	3	0	0	0	5	0	4	5	6	8	6	19	13	11	9	6	2	1	8	4	0	
+1	0	1	8	12	5	14	5	4	1	3	18	4	14	0	0	6	0	0	2	0	0	0	0	3	7	5	3	4	8	21	16	6	14	5	0	0	12	6	12	20	10	17	17	11	0	2	0	1	0	1	0	2	2	0	0	0	0	9	5	
+2	0	0	3	0	17	11	6	11	7	0	2	19	21	0	24	7	11	0	0	1	0	0	2	0	6	15	27	18	12	1	1	0	0	0	0	5	5	4	17	13	21	11	7	0	5	2	5	14	22	10	8	15	2	20	18	9	0	6	22	
+3	0	13	24	12	4	0	8	11	19	13	11	2	0	0	0	11	24	5	9	21	4	7	4	6	1	0	2	3	8	9	9	11	9	14	16	7	0	0	0	0	1	4	0	0	20	20	21	12	7	5	12	0	0	1	10	10	14	16	8	
+0	0	0	0	0	0	0	0	4	2	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+29	35	21	0	11	9	7	3	2	0	0	3	8	0	19	10	3	0	30	24	10	30	13	9	2	16	10	1	7	7	2	5	18	12	0	0	7	1	11	0	0	0	0	6	24	6	4	3	0	0	0	0	3	20	8	5	15	13	0	0	
+0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+
+
+---: Container in :---
+2	0	15	1	15	37	24	15	9	5	0	8	51	48	28	6	13	27	0	25	25	6	1	2	0	6	16	34	32	20	3	1	14	6	0	0	7	5	12	26	38	30	20	30	8	5	2	0	0	0	0	8	26	4	23	12	1	5	0	14	
+18	35	6	29	40	11	20	14	17	9	5	7	4	4	8	10	16	8	30	16	1	0	1	3	12	30	22	9	2	2	6	17	22	17	18	6	0	20	14	4	2	2	14	15	13	3	29	3	16	7	2	0	3	25	17	23	47	17	33	30	
+14	0	4	6	0	0	4	1	0	3	11	2	0	0	13	0	9	0	0	0	2	46	35	28	3	1	0	1	1	15	11	3	0	0	6	3	1	6	0	0	0	1	4	0	0	21	11	16	4	5	10	17	7	11	7	2	0	0	1	0	
+3	0	15	0	0	2	0	1	5	18	4	2	0	0	5	2	0	17	0	0	3	1	0	7	2	0	0	1	0	0	1	2	4	0	16	18	5	9	1	4	0	3	0	0	21	6	6	6	8	3	5	8	4	0	3	2	1	0	0	1	
+0	0	0	3	0	0	0	13	3	1	8	13	0	0	3	0	0	0	38	0	6	0	2	3	23	10	7	0	8	10	0	5	0	12	0	1	25	5	23	6	11	13	12	10	0	0	5	0	0	0	11	9	5	4	4	4	4	41	17	9	
+0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+0	0	0	0	0	0	0	3	11	10	10	8	3	6	0	25	0	0	0	0	6	6	15	0	0	0	0	3	6	0	19	0	0	0	0	20	14	1	1	2	3	0	0	0	0	0	0	18	15	20	10	0	2	1	0	0	0	0	2	0	
+0	0	3	0	0	0	0	0	1	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	14	6	14	5	0	0	0	0	0	0	0	0	0	0	4	0	0	0	3	0	0	0	0	0	2	0	0	0	0	
+0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+
+
+---: Container out :---
+0	0	0	0	0	0	0	0	0	2	11	0	2	0	6	0	0	0	0	0	0	0	0	16	1	0	0	2	3	0	2	4	0	0	1	0	10	9	14	3	3	5	3	0	0	0	2	0	0	0	0	3	4	2	0	0	0	0	0	0	
+0	0	0	0	0	0	4	13	3	4	8	1	0	0	15	2	9	0	0	0	6	1	21	5	26	10	7	0	1	0	1	0	0	0	15	19	7	11	1	3	0	0	0	10	0	4	7	6	8	6	20	17	12	15	9	2	2	16	7	0	
+1	0	1	8	20	9	20	8	7	1	3	19	4	18	0	0	7	0	0	2	0	0	0	0	3	12	10	3	4	13	23	18	6	14	5	0	0	19	10	19	38	19	31	26	15	0	2	0	1	0	2	0	2	2	0	0	0	0	14	9	
+2	0	0	3	0	24	13	9	12	8	0	2	36	40	0	31	7	21	0	0	1	0	0	2	0	6	16	40	28	19	1	1	0	0	0	0	8	5	4	17	13	24	12	7	0	5	2	5	14	22	10	8	26	4	30	23	10	0	9	30	
+5	0	21	28	17	4	0	11	15	28	16	13	2	0	0	0	11	31	8	14	24	6	7	5	8	1	0	2	5	8	11	14	22	17	24	29	14	0	0	0	0	1	4	0	0	24	33	29	20	10	6	14	0	0	1	14	14	22	23	15	
+0	0	0	0	0	0	0	0	7	3	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+29	35	21	0	18	13	11	6	2	0	0	5	14	0	36	10	4	0	60	25	12	52	26	15	2	18	12	1	8	7	2	5	18	18	0	0	13	2	22	0	0	0	0	12	27	6	7	3	0	0	0	0	3	22	14	6	27	25	0	0	
+0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	
+
+
+
+-----: FlowVector(solution) :----
+|----------- 0 -----------|
+[BLCTZS BLCTYD]	1
+[BLCTMS BLCT3]	13
+[BLCTZS BLCT2]	4
+[BLCTMS BLCT]	2
+[BLCTMS BLCT2]	14
+total:	34
+
+|----------- 1 -----------|
+[BLCTMS BLCT2]	35
+total:	35
+
+|----------- 2 -----------|
+[BLCTMS BLCT2]	4
+[BLCTZS ZHCT]	3
+[BLCTZS BLCT3]	1
+[BLCTMS BLCT3]	2
+[BLCTZS BLCT]	15
+[BLCTMS BLCTYD]	15
+[BLCTZS BLCT2]	2
+total:	42
+
+|----------- 3 -----------|
+[BLCTZS BLCT2]	25
+[BLCT3 BLCT]	1
+[BLCT3 BLCT2]	1
+[BLCTYD BLCT2]	4
+total:	31
+
+|----------- 4 -----------|
+[BLCTMS BLCT2]	3
+[BLCT3 BLCT2]	20
+[BLCTMS BLCT]	15
+[BLCTZS BLCT2]	17
+total:	55
+
+|----------- 5 -----------|
+[BLCTZS BLCT2]	2
+[BLCTMS BLCT]	13
+[BLCT3 BLCT2]	9
+[BLCTYD BLCT]	22
+[BLCTZS BLCT]	3
+total:	49
+
+|----------- 6 -----------|
+[BLCTMS BLCT]	11
+[BLCT3 BLCT2]	16
+[BLCTYD BLCT]	13
+total:	40
+
+|----------- 7 -----------|
+[BLCTMS BLCT]	3
+[BLCTYD BLCT]	8
+[BLCT3 BLCTZS]	2
+[BLCT3 BLCT2]	2
+[BLCT3 BLCT]	6
+total:	21
+
+|----------- 8 -----------|
+[BLCT3 ZHCT]	1
+[BLCTZS BLCT2]	7
+[DXCTE BLCT2]	7
+[BLCT3 BLCT]	6
+[BLCTYD BLCTMS]	7
+[BLCTZS BLCT]	4
+[BLCTZS BLCTMS]	3
+total:	35
+
+|----------- 9 -----------|
+[BLCTZS BLCTYD]	10
+[BLCTZS BLCTMS]	8
+[DXCTE BLCT2]	1
+[BLCTZS BLCT3]	1
+[BLCTZS BLCT]	4
+[BLCTZS BLCT2]	6
+[DXCTE BLCTMS]	3
+total:	33
+
+|----------- 10 -----------|
+[BLCTZS BLCTMS]	2
+[BLCT BLCTMS]	6
+[BLCTZS BLCT3]	3
+[BLCT BLCT3]	5
+[BLCT2 BLCTYD]	1
+[BLCT2 BLCTMS]	3
+[BLCTZS BLCTYD]	5
+total:	25
+
+|----------- 11 -----------|
+[BLCT3 BLCT2]	6
+[BLCT3 BLCT]	10
+[BLCT3 BLCTMS]	4
+total:	20
+
+|----------- 12 -----------|
+[BLCTYD BLCT]	37
+[BLCTMS BLCT]	10
+[BLCT3 BLCT2]	4
+[BLCTZS BLCT]	3
+total:	54
+
+|----------- 13 -----------|
+[BLCT3 BLCT2]	4
+[BLCTYD BLCT]	40
+[BLCT3 BLCTMS]	6
+[BLCT3 BLCT]	8
+total:	58
+
+|----------- 14 -----------|
+[BLCT2 BLCT3]	4
+[BLCT2 BLCTZS]	3
+[BLCTMS BLCT]	22
+[BLCTMS BLCT3]	10
+[BLCTMS BLCTYD]	6
+total:	45
+
+|----------- 15 -----------|
+[BLCTYD BLCT]	7
+[BLCTYD BLCTMS]	13
+[BLCTYD BLCT2]	9
+total:	29
+
+|----------- 16 -----------|
+[BLCTYD BLCT]	7
+[BLCTZS BLCT2]	4
+[BLCTMS BLCT2]	2
+[BLCTMS BLCT3]	3
+[BLCTZS BLCT]	8
+total:	24
+
+|----------- 17 -----------|
+[BLCTYD BLCT]	4
+[BLCTZS BLCT2]	8
+[BLCTZS BLCT]	23
+total:	35
+
+|----------- 18 -----------|
+[BLCTMS BLCT2]	30
+[BLCTMS BLCTZS]	30
+total:	60
+
+|----------- 19 -----------|
+[BLCT3 BLCT2]	2
+[BLCTZS BLCT2]	14
+[BLCTMS BLCT]	25
+total:	41
+
+|----------- 20 -----------|
+[BLCTMS BLCT]	1
+[BLCTMS BLCTYD]	2
+[BLCTZS BLCT]	18
+[BLCTMS BLCT3]	2
+[BLCT2 BLCT]	7
+total:	30
+
+|----------- 21 -----------|
+[BLCTMS BLCT3]	46
+[BLCT2 BLCTYD]	1
+[BLCTZS BLCT]	7
+total:	54
+
+|----------- 22 -----------|
+[BLCTMS BLCT3]	11
+[BLCT2 BLCT3]	19
+[BLCTZS BLCT3]	6
+[BLCT2 BLCT]	2
+total:	38
+
+|----------- 23 -----------|
+[BLCTMS BLCT3]	14
+[BLCT BLCT3]	13
+[BLCT2 BLCTYD]	3
+[BLCTZS BLCTYD]	3
+[BLCTMS BLCTYD]	2
+[BLCTZS BLCT3]	2
+total:	37
+
+|----------- 24 -----------|
+[BLCT BLCTYD]	1
+[BLCT2 BLCTZS]	13
+[BLCT2 BLCTYD]	2
+[BLCTMS BLCTZS]	4
+total:	20
+
+|----------- 25 -----------|
+[BLCT3 BLCT2]	6
+[BLCTMS BLCT2]	14
+[BLCTYD BLCT]	6
+[BLCTMS BLCTZS]	5
+[BLCT3 BLCTZS]	6
+total:	37
+
+|----------- 26 -----------|
+[BLCT3 BLCT2]	3
+[BLCTMS BLCT2]	12
+[BLCTYD BLCT]	16
+[BLCT3 BLCTZS]	8
+total:	39
+
+|----------- 27 -----------|
+[BLCTYD BLCT]	31
+[BLCTYD BLCT2]	8
+[BLCT3 BLCTMS]	1
+[BLCTZS BLCT]	2
+[BLCT3 BLCT2]	2
+[BLCTZS BLCTMS]	2
+total:	46
+
+|----------- 28 -----------|
+[BLCTYD BLCT]	28
+[BLCT3 BLCTZS]	2
+[BLCTYD BLCT2]	2
+[BLCTMS BLCT]	1
+[BLCT3 BLCT]	2
+[BLCTMS BLCTZS]	3
+total:	38
+
+|----------- 29 -----------|
+[BLCTYD BLCT]	19
+[BLCTMS BLCT3]	2
+[BLCTMS BLCT2]	4
+[BLCTMS BLCTZS]	1
+[BLCTMS BLCT]	3
+total:	29
+
+|----------- 30 -----------|
+[BLCT3 BLCTMS]	10
+[BLCTZS BLCT2]	4
+[BLCTZS BLCT]	1
+[BLCT3 BLCT2]	3
+[BLCTZS BLCTMS]	8
+[BLCTZS BLCTYD]	2
+total:	28
+
+|----------- 31 -----------|
+[BLCT3 BLCT2]	1
+[BLCTMS BLCT2]	5
+[BLCTMS BLCTYD]	1
+[BLCTZS BLCT2]	8
+[BLCT3 ZHCT]	14
+[BLCT BLCT2]	4
+total:	33
+
+|----------- 32 -----------|
+[BLCTMS BLCTYD]	4
+[BLCTZS BLCT2]	22
+[BLCTMS BLCT]	14
+[BLCT3 ZHCT]	6
+total:	46
+
+|----------- 33 -----------|
+[BLCTMS BLCT]	6
+[BLCT3 ZHCT]	14
+[BLCTZS BLCT2]	5
+[BLCTMS BLCT2]	13
+total:	38
+
+|----------- 34 -----------|
+[BLCT BLCTYD]	1
+[BLCTZS BLCT3]	1
+[BLCTZS BLCT2]	3
+[BLCTZS ZHCT]	6
+[BLCTZS BLCTYD]	16
+total:	27
+
+|----------- 35 -----------|
+[BLCTZS BLCT3]	3
+[BLCTZS BLCTMS]	20
+[BLCT2 BLCTYD]	13
+[BLCTZS BLCTYD]	6
+total:	42
+
+|----------- 36 -----------|
+[BLCT BLCTZS]	2
+[BLCT2 BLCT3]	1
+[BLCT2 BLCTMS]	2
+[BLCT2 BLCTZS]	7
+[BLCTYD BLCTZS]	4
+total:	16
+
+|----------- 37 -----------|
+[BLCT3 BLCT2]	7
+[BLCTMS BLCTZS]	1
+[BLCT BLCTZS]	2
+[BLCT BLCT2]	2
+[BLCT3 BLCTYD]	4
+[BLCT3 BLCTZS]	4
+total:	20
+
+|----------- 38 -----------|
+[BLCTMS BLCTZS]	21
+[BLCT3 BLCT2]	9
+[BLCT BLCTZS]	3
+[BLCTYD BLCT2]	4
+[BLCT3 BLCTZS]	2
+total:	39
+
+|----------- 39 -----------|
+[BLCTYD BLCTZS]	3
+[BLCTYD BLCT]	7
+[BLCT3 BLCT]	15
+[BLCT3 BLCTZS]	6
+[BLCTYD BLCTMS]	3
+total:	34
+
+|----------- 40 -----------|
+[BLCTYD BLCTZS]	11
+[BLCT3 BLCT2]	2
+[BLCT3 BLCT]	35
+[BLCTYD BLCTMS]	3
+[BLCT3 BLCTMS]	2
+total:	53
+
+|----------- 41 -----------|
+[BLCTYD BLCT]	8
+[BLCT3 BLCT]	18
+[BLCTYD BLCTZS]	11
+[BLCTYD BLCT2]	3
+total:	40
+
+|----------- 42 -----------|
+[BLCT3 BLCT]	13
+[BLCT3 BLCT2]	14
+[BLCTYD BLCTZS]	7
+[BLCTYD BLCT]	6
+total:	40
+
+|----------- 43 -----------|
+[BLCT3 BLCT]	23
+[BLCTMS BLCT2]	2
+[BLCT3 BLCT2]	3
+[BLCTYD BLCT]	7
+[BLCTMS BLCTZS]	11
+total:	46
+
+|----------- 44 -----------|
+[BLCTMS BLCT2]	6
+[BLCT3 BLCT2]	7
+[BLCT3 BLCT]	8
+[BLCTMS BLCTYD]	21
+total:	42
+
+|----------- 45 -----------|
+[BLCT2 ZHCT]	1
+[BLCTMS BLCTYD]	1
+[BLCTZS BLCT3]	21
+[BLCTZS ZHCT]	4
+[BLCTMS BLCT]	6
+total:	33
+
+|----------- 46 -----------|
+[BLCTZS BLCT2]	17
+[BLCTZS BLCT3]	8
+[BLCTMS BLCT2]	7
+[BLCTZS BLCTYD]	3
+total:	35
+
+|----------- 47 -----------|
+[BLCTZS BLCT3]	16
+[BLCTZS BLCTMS]	12
+[BLCTZS BLCTYD]	2
+[BLCT2 BLCTMS]	4
+total:	34
+
+|----------- 48 -----------|
+[BLCTZS BLCT2]	8
+[BLCTZS BLCT3]	3
+[BLCTYD BLCTMS]	5
+[BLCTZS BLCTMS]	11
+total:	27
+
+|----------- 49 -----------|
+[BLCTZS BLCT3]	5
+[BLCTYD BLCTMS]	18
+[BLCTZS ZHCT]	4
+[BLCTZS BLCT2]	2
+[BLCTZS BLCTMS]	3
+total:	32
+
+|----------- 50 -----------|
+[BLCT2 BLCT3]	9
+[BLCTYD BLCTMS]	5
+[BLCT2 BLCTZS]	2
+[BLCT2 BLCTMS]	7
+total:	23
+
+|----------- 51 -----------|
+[BLCT2 BLCT3]	12
+[BLCTYD BLCT]	0
+[BLCTZS BLCT3]	5
+[BLCT2 BLCT]	6
+total:	23
+
+|----------- 52 -----------|
+[BLCT2 BLCT3]	4
+[BLCTYD BLCT]	19
+[BLCTYD BLCTZS]	4
+[BLCT2 BLCT]	4
+[BLCTMS BLCT3]	2
+[BLCT2 BLCTZS]	4
+total:	37
+
+|----------- 53 -----------|
+[BLCTYD BLCT]	1
+[BLCTMS BLCT2]	8
+[BLCTMS BLCT3]	9
+[BLCTMS BLCTZS]	5
+[BLCTYD BLCT3]	3
+[BLCTYD BLCT2]	3
+total:	29
+
+|----------- 54 -----------|
+[BLCTYD BLCT]	14
+[BLCTMS BLCTZS]	2
+[BLCTMS BLCT]	11
+[BLCTYD BLCT2]	7
+[BLCTMS BLCT3]	2
+[BLCTYD BLCT3]	7
+total:	43
+
+|----------- 55 -----------|
+[BLCTYD BLCT]	11
+[BLCTMS BLCT2]	2
+[BLCTYD BLCT2]	10
+[BLCTZS BLCT2]	9
+[BLCTZS BLCT]	2
+[BLCTMS BLCT3]	3
+[BLCTMS ZHCT]	3
+total:	40
+
+|----------- 56 -----------|
+[BLCTMS BLCT2]	27
+[BLCTYD BLCT2]	8
+[BLCTZS BLCT2]	10
+[BLCTMS BLCT]	2
+total:	47
+
+|----------- 57 -----------|
+[BLCTMS BLCTZS]	19
+[BLCTMS BLCT]	6
+[BLCTMS BLCT2]	2
+total:	27
+
+|----------- 58 -----------|
+[BLCTYD BLCT2]	10
+[BLCTZS BLCT2]	5
+[BLCT3 BLCTMS]	3
+[BLCT3 BLCT2]	12
+total:	30
+
+|----------- 59 -----------|
+[BLCTYD BLCT2]	28
+[BLCTZS BLCT]	6
+[BLCT3 BLCT]	9
+[BLCT3 BLCT2]	3
+total:	46
+
+-----: end of FlowVector(solution) :----
+

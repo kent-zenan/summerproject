@@ -1,0 +1,130 @@
+package uk.ac.nottingham.ningboport.planner;
+
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.Vector;
+
+public class NetworkReader {
+	private static Vector<String> networkFile = new Vector<String>();
+	public static boolean readFile(Network nw, String path) throws IOException {
+		networkFile.clear(); // make sure previous load isn't added up
+		BufferedReader br;
+		br = new BufferedReader(new FileReader(path));
+		String lineStr;
+		while((lineStr = br.readLine()) != null) {
+			networkFile.add(lineStr);
+		}
+		br.close();
+		parseNetwork(nw);
+		return true;
+	}
+	
+	private static void parseVehicleSetting(int start, int end, Network nw) {
+		for (int i = start; i <= end; i++) {
+			String s[] = networkFile.elementAt(i).split("\t| ");
+			if (s[0].equals("loaded")) {
+				nw.loadedVehilceFuelCost = Integer.parseInt(s[1]);
+				
+			} else if (s[0].equals("empty")) {
+				nw.emptyVehicleFuelCost = Integer.parseInt(s[1]);
+				
+			} else if (s[0].equals("quantity")) {
+				nw.createEmptyRoutes(Integer.parseInt(s[1]));
+				
+			} else {
+				RoutingPlanner.errormsg("Unknown vehilce definition: " + s[0] + ".");
+				
+			}
+		}
+	}
+	
+	private static void parseNodes(int start, int end, Network nw) {
+		for (int i = start + 1; i <= end; i++) {
+			String s[] = networkFile.elementAt(i).split("\t");
+			nw.nodes.add(new Node(s[0], Integer.parseInt(s[1]), Integer.parseInt(s[2])));
+			nw.nodes.lastElement().index = i - start - 1;
+		}
+	}
+	
+	/*
+	 * parsingTime = false ====> parsing traveling distance
+	 * */
+	private static void parseArcs(int start, Network nw, boolean parsingTime) {
+		int size = nw.nodes.size();
+		int end = start + size;
+		
+		if (parsingTime) {
+			nw.setTravelingTimesMatrix(new double[size][size]);
+			nw.setTravelingTimesWithQueueMatrix(new double[size][size]);
+		} else {
+			nw.setTravelingDistancesMatrix(new double[size][size]);
+		}
+		
+		int j = 0;
+		for (int i = start + 1; i <= end; i++) { // start + 1: skip 1 line
+			String s[] = networkFile.elementAt(i).split("\t");
+			for (int k = 0; k < size; k++) {
+				if (parsingTime) {
+					nw.setTravelingTime(j, k, Double.parseDouble(s[k+1]));
+					nw.setTravelingTimeWithQueue(j, k, nw.getTravelingTime(j, k) + nw.nodes.get(j).loadTime
+							+ nw.nodes.get(k).unloadTime);
+				} else {
+					nw.setTravelingDistance(j, k, Double.parseDouble(s[k+1]));
+				}
+			}
+			j++;
+		}
+	}
+	
+	private static void parseDepot(int start, Network nw) {
+		for (int i = 0; i < nw.nodes.size(); i++) {
+			if (nw.nodes.elementAt(i).id.equals(networkFile.elementAt(start))) {
+				nw.depot = nw.nodes.elementAt(i);
+			}
+		}
+		if (nw.depot == null) RoutingPlanner.errormsg("Depot error");
+	}
+	
+	private static Network parseNetwork(Network nw) {
+		int i = 0;
+		while (i < networkFile.size()) {
+			if (networkFile.elementAt(i).equals("#vehicle")) {
+				parseVehicleSetting(i+1, i+3, nw);
+				i+=3;
+				
+			} else if (networkFile.elementAt(i).equals("#nodes")) {
+				int start = i + 1, end;
+				for (end = start; end < networkFile.size(); end++) {
+					if (networkFile.elementAt(end).charAt(0) == '#')
+						break;
+				}
+				i = --end;
+				parseNodes(start, end, nw);
+				
+			} else if (networkFile.elementAt(i).equals("#time")) {
+				if (nw.nodes == null) {
+					RoutingPlanner.errormsg("Error in network file: no nodes defined!");
+					System.exit(0);
+				}
+				parseArcs(i + 1, nw, true);
+			} else if (networkFile.elementAt(i).equals("#distance")) {
+				if (nw.nodes == null) {
+					RoutingPlanner.errormsg("Error in network file: no nodes defined!");
+					System.exit(0);
+				}
+				parseArcs(i + 1, nw, false);
+			} else if (networkFile.elementAt(i).equals("#depot")) {
+				if (nw.nodes == null) {
+					RoutingPlanner.errormsg("Error in network file: no nodes defined!");
+					System.exit(0);
+				}
+				parseDepot(i + 1, nw);
+			}
+			i++;
+		}
+		return nw;
+	}
+
+
+}

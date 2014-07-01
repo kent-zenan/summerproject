@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">宁波港调度</string>
+    <string name="menu_settings">设置</string>
+    <string name="menu_about">关于</string>
+    <string name="id">ID</string>
+	<string name="from">从</string>
+	<string name="to">到</string>
+	<string name="ETA">预期到达</string>
+	<string name="login">用户登录</string>
+	<string name="un">用户名</string>
+	<string name="pw">密码</string>
+	<string name="vid">车辆编号</string>
+	<string name="loginBtn">登录</string>
+	
+	<string name="activitylogin">登录</string>
+	<string name="activityList">任务列表</string>
+	<string name="activityAbout">关于</string>
+	<string name="activitySettings">设置</string>
+	<string name="activityMap">地图</string>
+	
+	<string name="about">
+	    宁波港调度软件是一个诺丁汉大学(宁波)的暑期研究项目\n\n 
+	    导师\n
+	    白瑞斌\n
+	    程适\n\n
+	    安卓客户端:\n
+	    李嘉奇\n\n
+	    服务器端:\n
+	    陈建军 - 算法\n
+	    张尧 - 用户界面\n
+	    祝皓玥 - 数据库\n
+	    李嘉奇 - 服务器/客户端通信\n\n
+	</string>
+<string name="hostAddr">服务器地址</string>
+	<string name="portNum">端口号</string>
+	<string name="loginAddr">登录地址</string>
+	<string name="updateAddr">更新地址</string>
+	<string name="timeout">超时(秒)</string>
+	<string name="updateInterval">更新时间间隔(秒)</string>
+	<string name="language">语言</string>
+	<string name="resetAll">恢复默认设置</string>
+	<string name="msgEmptyTable">必须填写用户名，密码和车辆编号</string>
+	<string name="msgNetworkFailure">错误：网络连接失败</string>
+	<string name="msgCanceled">已取消</string>
+	<string name="msgLoginFailure">错误：用户名和密码不匹配或者车辆编号无效.</string>
+	<string name="msgMapNotReady">地图未就绪</string>
+	<string name="msgSetFailure">错误：无法写入设置</string>
+	<string name="menuSetUpdateTitle">更新设置</string>
+	<string name="menuSetUpdateContent">请输入新的值：</string>
+	<string name="menuResetTitle">重置所有设置</string>
+	<string name="menuConfirm">你确定吗？</string>
+	<string name="menuActions">操作</string>
+	<string name="menuActionStart">开始</string>
+	<string name="menuActionFinsih">结束</string>
+	<string name="menuGotoMap">打开地图</string>
+	<string name="menuExitTitle">退出</string>
+	<string name="dialogProc">处理中</string>
+	<string name="dialogLogin">正在登录.. </string>
+	<string name="dialogUpdate">正在更新..</string>
+	<string name="ok">好</string>
+	<string name="yes">是</string>
+	<string name="no">否</string>
+	<string name="cancel">取消</string>
+	<string name="refresh">更新</string>
+	<string name="loginRequired">请先登录</string>
+</resources>

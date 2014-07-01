@@ -1,0 +1,411 @@
+package uk.ac.nottingham.ningboport.planner.algorithms;
+
+import java.util.Vector;
+
+import uk.ac.nottingham.ningboport.planner.Network;
+import uk.ac.nottingham.ningboport.planner.Route;
+import uk.ac.nottingham.ningboport.planner.RoutingPlanner;
+import uk.ac.nottingham.ningboport.planner.Task;
+
+public class NFunc {
+	
+	private Network nw;
+	
+	NFunc(Network nw) {
+		this.nw = nw;
+	}
+	
+	/****************************************************
+	 * Neighbourhood functions are defined below:       *
+	 ****************************************************/
+	
+	public boolean moveSingleRoute(Route a, int index, int slot, boolean execute) {
+		Vector<Task> taskSet = a.taskSet;
+		@SuppressWarnings("unchecked")
+		Vector<Task> taskSetBak = (Vector<Task>) a.taskSet.clone();
+		if (index == slot || slot == index + 1) {
+			return false;
+		}
+		if (index >= taskSet.size() || index < 0) {
+			RoutingPlanner.errormsg("Error moving from node index " + index + " from route " + a);
+			return false;
+		}
+		
+		if (slot > taskSet.size() || slot < 0) {
+			RoutingPlanner.errormsg("Error moving to node index " + slot + " of route " + a);
+			return false;
+		}
+		
+		Task t = taskSet.elementAt(index);
+		taskSet.add(slot, t);
+		if (taskSet.get(index) == t) {
+			taskSet.remove(index);
+		} else {
+			taskSet.remove(index + 1);
+		}
+		
+		if (nw.check(a, true, true) > 0) {
+			if (!execute) 
+				a.taskSet = taskSetBak;
+			
+			return true;
+		} else {
+			a.taskSet = taskSetBak;
+			return false;
+		}
+	}
+	
+	/*
+	 * Moving a node from route a to route b
+	 */
+	public boolean moveTask(Route a, int index_a, Route b, int index_b, boolean execute) {
+		if (a.equals(b)) {
+			return moveSingleRoute(a, index_a, index_b, execute);
+			//return false;
+		}
+		//System.out.println("before move:" + "\n" + a + "\n" + b);
+		
+		if (index_a >= a.taskSet.size()) {
+			RoutingPlanner.errormsg("Error moving from node index " + a + " from route " + a);
+			return false;
+		}
+		
+		if (index_b > b.taskSet.size()) {
+			RoutingPlanner.errormsg("Error moving to node index " + b + " of route " + b);
+			return false;
+		}
+		
+		Task t = a.taskSet.elementAt(index_a);
+		b.taskSet.insertElementAt(t, index_b);
+		a.taskSet.remove(index_a);
+		
+		if (nw.check(a, true, true) > 0 && nw.check(b, true, true) > 0) {
+			//System.out.println("after move(success): \n" + a + "\n" + b);
+			//DON'T move a.ta.remove to here! cuz routes are just checked!
+			if (!execute) {
+				a.taskSet.insertElementAt(t, index_a);
+				b.taskSet.remove(index_b);
+			}
+			
+			return true;
+		} else {
+			a.taskSet.insertElementAt(t, index_a);
+			b.taskSet.remove(index_b);
+			//System.out.println("after move(fail): \n" + a + "\n" + b);
+			return false;
+		}
+	}
+	
+	private boolean swapTaskSingleRoute(Route a, int index_a, int index_b, boolean execute) {
+		if (index_a == index_b)
+			return false;
+		
+		if (index_a >= a.taskSet.size()) {
+			RoutingPlanner.errormsg("Single: Error swapping node index_a " + index_a + " from route " + a);
+			return false;
+		}
+		
+		if (index_b >= a.taskSet.size()) {
+			RoutingPlanner.errormsg("Single: Error swapping to node index_b " + index_b + " of route " + a);
+			return false;
+		}
+		
+		Task t1 = a.taskSet.elementAt(index_a), 
+				t2 = a.taskSet.elementAt(index_b);
+		
+		a.taskSet.set(index_a, t2);
+		a.taskSet.set(index_b, t1);
+		
+		if (nw.check(a, true, true) > 0) {
+			if (!execute) {
+				a.taskSet.set(index_a, t1);
+				a.taskSet.set(index_b, t2);
+			}
+			Route error = nw.checkAllRoutes();
+			if (error != null) {
+				System.out.println(error);
+				System.exit(0);
+			}
+			return true;
+		} else {
+			a.taskSet.set(index_a, t1);
+			a.taskSet.set(index_b, t2);
+			return false;
+		}
+	}
+	
+	public boolean swapTask(Route a, int index_a, Route b, int index_b, boolean execute) {
+		if (a.equals(b)) {
+			return swapTaskSingleRoute(a, index_a, index_b, execute);
+		}
+		if (index_a >= a.taskSet.size()) {
+			RoutingPlanner.errormsg("Error swapping node index(a side) " + index_a + " from route " + a);
+			return false;
+		}
+		
+		if (index_b >= b.taskSet.size()) {
+			RoutingPlanner.errormsg("Error swapping to node index(b side) " + index_b + " of route " + b);
+			return false;
+		}
+		
+		Task t1 = a.taskSet.elementAt(index_a), 
+				t2 = b.taskSet.elementAt(index_b);
+		
+		a.taskSet.set(index_a, t2);
+		b.taskSet.set(index_b, t1);
+
+		if (nw.check(a, true, true) > 0 && nw.check(b, true, true) > 0) {
+			if (!execute) {
+				a.taskSet.set(index_a, t1);
+				b.taskSet.set(index_b, t2);
+			}
+			Route error = nw.checkAllRoutes();
+			if (error != null) {
+				System.out.println(error);
+				System.exit(0);
+			}
+			return true;
+		} else {
+			a.taskSet.set(index_a, t1);
+			b.taskSet.set(index_b, t2);
+			return false;
+		}
+		
+	}
+	
+	@SuppressWarnings("unchecked")
+	public int swapTask
+	(Route r, int index, Vector<Task> tasks, int tIndex, boolean execute) {
+		Task newOnRoute = tasks.get(tIndex);
+		Vector<Task> old = (Vector<Task>) r.taskSet.clone();
+		
+		Task previousOnRoute = r.taskSet.set(index, newOnRoute);
+		int res = nw.check(r, true, true);
+		if (res > 0) {
+			if (execute) {
+				tasks.remove(tIndex);
+				tasks.add(previousOnRoute);
+			} else {
+				r.taskSet = old;
+			}
+			
+		} else {
+			r.taskSet = old;
+			
+		}
+		return res;
+	}
+	
+	/*
+	 * The swapped edge is after slot A and slot B 
+	 */
+	@SuppressWarnings("unchecked")
+	public boolean twoOpt(Route a, int slotA, Route b, int slotB, boolean execute) {
+		if (a.equals(b)) {
+			return false;
+		}
+		
+		Vector<Task> oldA = (Vector<Task>) a.taskSet.clone(),
+				oldB = (Vector<Task>) b.taskSet.clone();
+		
+		Vector<Task> newA = new Vector<Task>(),
+				newB = new Vector<Task>();
+
+		newA.addAll(a.taskSet.subList(0, slotA + 1));
+		newA.addAll(b.taskSet.subList(slotB + 1, b.taskSet.size()));
+		newB.addAll(b.taskSet.subList(0, slotB + 1));
+		newB.addAll(a.taskSet.subList(slotA + 1, a.taskSet.size()));
+		a.taskSet = newA;
+		b.taskSet = newB;
+	
+		if (nw.check(a, true, true) > 0 && nw.check(b, true, true) > 0) {
+			if (!execute) {
+				a.taskSet = oldA;
+				b.taskSet = oldB;
+			}
+			
+			Route error = nw.checkAllRoutes();
+			if (error != null) {
+				System.out.println(error);
+				System.exit(0);
+			}
+			return true;
+		} else {
+			a.taskSet = oldA;
+			b.taskSet = oldB;
+			return false;
+		}
+	}
+	
+	/*
+	 * TODO: THIS IS NOT AWARE OF TASK FREEZE()!!!!!! 
+	 */
+	public void optimizeAllRoutes() {
+		int numberOfShifts = nw.getNumberOfShifts();
+		for (int i = 0; i < numberOfShifts; i++) {
+			this.optimizeRouteInPeriod(i);
+		}
+	}
+	
+	public void optimizeRouteInPeriod(int periodIndex) {
+		Vector<Route> routesOfPeriod = nw.routesOfShifts.get(periodIndex);
+		for (int i = 0; i < routesOfPeriod.size(); i++) {
+			optimizeRoute(routesOfPeriod.get(i));
+		}
+	}
+	
+	/*
+	 * find the best sequence of the task for a give route
+	 */
+	public void optimizeRoute(Route r) {
+		if (nw.check(r) < 1) {
+			System.out.println("Route optimizer: You gave me a bad route to optimize");
+		}
+		Route empty = r.clone();
+		empty.taskSet.clear();
+		findFullRoutePerm(empty, r.taskSet, r);
+	}
+	
+	@SuppressWarnings("unchecked")
+	private void findFullRoutePerm(Route r, Vector<Task> taskSet, Route bestR) {
+		for (int i = 0; i < taskSet.size(); i++) {
+			Route nextRoute = r.clone();
+			Vector<Task> nextTaskSet = (Vector<Task>) taskSet.clone();
+			nextRoute.taskSet.add(nextTaskSet.remove(i));
+			
+			if (nextRoute.nw.check(nextRoute) > 0) {
+				if (nextTaskSet.size() == 0) { 
+					if (Double.compare(nextRoute.emptyDistance, bestR.emptyDistance) < 0) {
+						bestR.taskSet = nextRoute.taskSet;
+						bestR.emptyDistance = nextRoute.emptyDistance;
+						//System.out.println("new best route found");
+					}
+				} else {
+					findFullRoutePerm(nextRoute, nextTaskSet, bestR);
+				}
+			}
+		}
+	}
+	
+	/*
+	 * Optimizes a sub route,
+	 * starts with task at 'start', and ends at task at 'end'
+	 * [start, end]
+	 */
+	public void optimizePartialRoute(Route r, int start, int end) {
+		if (r.nw.check(r) < 1) {
+			System.out.println("Route optimizer: You gave me a bad route to optimize");
+			return;
+		}
+		
+		int r_size = r.taskSet.size();
+		
+		if (r_size == 0)
+			return;
+		
+		if (start < 0 || start > r_size ||
+				end < 0 || end > r_size || start > end) {
+			System.out.println("optimize partial route: bad index");
+			return;
+		}
+		
+		Route initial = r.clone();
+		//initial.taskSet.clear();
+		Vector<Task> taskSet = new Vector<Task>();
+		Vector<Task> tail = new Vector<Task>();
+		
+		for (int i = r_size - 1; i > end; i--) {
+			tail.add(initial.taskSet.remove(i));
+		}
+		
+		for (int i = start; i <= end; i++) {
+			taskSet.add(initial.taskSet.remove(start));
+		}
+		
+		findRoutePerm(initial, taskSet, tail, r);
+	}
+	
+	/*
+	 * find all possible sequences of tasks in a route
+	 * task in 'tail' is added to the end of the route when checking route
+	 */
+	@SuppressWarnings("unchecked")
+	private void findRoutePerm(Route initial, Vector<Task> taskSet,
+			Vector<Task> tail, Route bestR) {
+		for (int i = 0; i < taskSet.size(); i++) {
+			Route testRoute = initial.clone(), nextTestRoute = initial.clone();
+			Vector<Task> nextTaskSet = (Vector<Task>) taskSet.clone();
+			nextTestRoute.taskSet.add(nextTaskSet.get(i));
+			testRoute.taskSet.add(nextTaskSet.remove(i));
+			if (tail != null) {
+				testRoute.taskSet.addAll(tail);
+			}
+			
+			if (testRoute.nw.check(testRoute) > 0) {
+				if (nextTaskSet.size() == 0) { 
+					if (Double.compare(testRoute.emptyDistance, bestR.emptyDistance) < 0) {
+						bestR.taskSet = testRoute.taskSet;
+						bestR.emptyDistance = testRoute.emptyDistance;
+						//System.out.println("new best route found");
+					}
+				} else {
+					findRoutePerm(nextTestRoute, nextTaskSet, tail, bestR);
+				}
+			}
+		}
+		
+	}
+	
+	/*
+	 * from taskSet[startA] to taskSet[lengthA - 1]
+	 * 
+	 */
+	@SuppressWarnings("unchecked")
+	public boolean cross(Route a, int startA, int lengthA, Route b, int startB, int lengthB, boolean executeCross) {
+		if (a == b) return false;
+//		String out = "Before:\n";
+//		out += a + "\n" + b + "\n";
+		
+		Vector<Task> taskSetA = a.taskSet, taskSetB = b.taskSet;
+		Vector<Task> backUpA = (Vector<Task>) taskSetA.clone(), backUpB = (Vector<Task>) taskSetB.clone();
+		
+		Vector<Task> aMid = new Vector<Task>(),
+				bMid = new Vector<Task>();
+		for (int i = 0; i < lengthA; i++) {
+			aMid.add(taskSetA.remove(startA));
+		}
+		
+		for (int i = 0; i < lengthB; i++) {
+			bMid.add(taskSetB.remove(startB));
+		}
+		//switch segment
+		taskSetA.addAll(startA, bMid);
+
+		taskSetB.addAll(startB, aMid);
+		
+		
+		//check route
+		if(nw.check(a, true, true) > 0 && nw.check(b, true, true) > 0) {
+			if (!executeCross) {
+				a.taskSet = backUpA;
+				b.taskSet = backUpB;
+				return true;
+			}
+			Route error = nw.checkAllRoutes();
+			if (error != null) {
+				System.out.println(error);
+				int r = nw.check(a, true, true);
+				System.exit(0);
+			}
+//			out += "After\n";
+//			out += a + "\n" + b + "\n";
+//			System.out.println(out);
+//			System.out.println(startA + " " + lengthA + " " + startB + " " + lengthB);
+			return true;
+		} else {
+			a.taskSet = backUpA;
+			b.taskSet = backUpB;
+			return false;
+		}
+	}
+}

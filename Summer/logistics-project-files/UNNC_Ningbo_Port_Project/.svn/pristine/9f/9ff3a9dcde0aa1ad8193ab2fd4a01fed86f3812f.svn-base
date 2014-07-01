@@ -1,0 +1,48 @@
+package uk.ac.nottingham.ningboport.planner;
+
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.Vector;
+
+import uk.ac.nottingham.ningboport.planner.algorithms.Insertion;
+import uk.ac.nottingham.ningboport.planner.algorithms.VNS;
+
+public class EventBasedSimulator {
+	private Vector<CommodityEvent> commodityEvents;
+	private Calendar currentTime;
+	private Network nw;
+	
+	//TODO: if it is simulated. we no longer need to specify number of shifts
+	EventBasedSimulator(Vector<CommodityEvent> events, Network nw) {
+		commodityEvents = events;
+		System.out.printf("There are %d events parsed from %d commodities",
+				events.size(), nw.commodities.size());
+		this.nw = nw;
+	}
+	
+	public void run() {
+		Collections.sort(commodityEvents);
+		currentTime = commodityEvents.firstElement().eventTime;
+		
+		int commodityEventSize = commodityEvents.size();
+		for (int i = 0; i < commodityEventSize; i++) {
+			//reveal commodities in event
+			CommodityEvent event = commodityEvents.get(i);
+			int commoditySize = event.commodities.size();
+			for (int j = 0; j < commoditySize; j++) {
+				event.commodities.get(j).revealed = true;
+			}
+			
+			// set current time and make all tasks
+			// before/in current time finished/finishing
+			currentTime = event.eventTime;
+			
+			// run the algorithm
+			Insertion ins = new Insertion(nw, false, false);
+			ins.run();
+			//TODO: test if T12120620 is completed after vns
+			VNS ts = new VNS(nw);
+			ts.run();
+		}
+	}
+}
